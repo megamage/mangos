@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,16 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOS_CREATUREAI_H
-#define MANGOS_CREATUREAI_H
+#ifndef TRINITY_CREATUREAI_H
+#define TRINITY_CREATUREAI_H
 
 #include "Common.h"
 #include "Platform/Define.h"
@@ -32,7 +34,42 @@ struct SpellEntry;
 #define TIME_INTERVAL_LOOK   5000
 #define VISIBILITY_RANGE    10000
 
-class MANGOS_DLL_SPEC CreatureAI
+//Spell targets used by SelectSpell
+enum SelectTarget
+{
+    SELECT_TARGET_DONTCARE = 0,                             //All target types allowed
+
+    SELECT_TARGET_SELF,                                     //Only Self casting
+
+    SELECT_TARGET_SINGLE_ENEMY,                             //Only Single Enemy
+    SELECT_TARGET_AOE_ENEMY,                                //Only AoE Enemy
+    SELECT_TARGET_ANY_ENEMY,                                //AoE or Single Enemy
+
+    SELECT_TARGET_SINGLE_FRIEND,                            //Only Single Friend
+    SELECT_TARGET_AOE_FRIEND,                               //Only AoE Friend
+    SELECT_TARGET_ANY_FRIEND,                               //AoE or Single Friend
+};
+
+//Spell Effects used by SelectSpell
+enum SelectEffect
+{
+    SELECT_EFFECT_DONTCARE = 0,                             //All spell effects allowed
+    SELECT_EFFECT_DAMAGE,                                   //Spell does damage
+    SELECT_EFFECT_HEALING,                                  //Spell does healing
+    SELECT_EFFECT_AURA,                                     //Spell applies an aura
+};
+
+//Selection method used by SelectTarget
+enum SelectAggroTarget
+{
+    SELECT_TARGET_RANDOM = 0,                               //Just selects a random target
+    SELECT_TARGET_TOPAGGRO,                                 //Selects targes from top aggro to bottom
+    SELECT_TARGET_BOTTOMAGGRO,                              //Selects targets from bottom aggro to top
+    SELECT_TARGET_NEAREST,
+    SELECT_TARGET_FARTHEST,
+};
+
+class TRINITY_DLL_SPEC CreatureAI
 {
     public:
 
@@ -46,12 +83,6 @@ class MANGOS_DLL_SPEC CreatureAI
 
         // Called at stopping attack by any attacker
         virtual void EnterEvadeMode() = 0;
-
-        // Called at any heal cast/item used (call non implemented)
-        virtual void HealBy(Unit * /*healer*/, uint32 /*amount_healed*/) {}
-
-        // Called at any Damage to any victim (before damage apply)
-        virtual void DamageDeal(Unit * /*done_to*/, uint32 & /*damage*/) {}
 
         // Called at any Damage from any attacker (before damage apply)
         virtual void DamageTaken(Unit *done_by, uint32 & /*damage*/) { AttackedBy(done_by); }
@@ -76,6 +107,9 @@ class MANGOS_DLL_SPEC CreatureAI
         // Called when hit by a spell
         virtual void SpellHit(Unit*, const SpellEntry*) {}
 
+        // Called when spell hits a target
+        virtual void SpellHitTarget(Unit* target, const SpellEntry*) {} 
+
         // Called when vitim entered water and creature can not enter water
         virtual bool canReachByRangeAttack(Unit*) { return false; }
 
@@ -87,6 +121,9 @@ class MANGOS_DLL_SPEC CreatureAI
 
         // Called at waypoint reached or point movement finished
         virtual void MovementInform(uint32 /*MovementType*/, uint32 /*Data*/) {}
+
+        // Called when AI is temporarily replaced or put back when possess is applied or removed
+        virtual void OnPossess(bool apply) {}
 };
 
 struct SelectableAI : public FactoryHolder<CreatureAI>, public Permissible<Creature>

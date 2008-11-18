@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "ObjectGridLoader.h"
@@ -27,7 +29,7 @@
 #include "World.h"
 #include "CellImpl.h"
 
-class MANGOS_DLL_DECL ObjectGridRespawnMover
+class TRINITY_DLL_DECL ObjectGridRespawnMover
 {
     public:
         ObjectGridRespawnMover() {}
@@ -63,12 +65,12 @@ ObjectGridRespawnMover::Visit(CreatureMapType &m)
 
         float resp_x, resp_y, resp_z;
         c->GetRespawnCoord(resp_x, resp_y, resp_z);
-        CellPair resp_val = MaNGOS::ComputeCellPair(resp_x, resp_y);
+        CellPair resp_val = Trinity::ComputeCellPair(resp_x, resp_y);
         Cell resp_cell(resp_val);
 
         if(cur_cell.DiffGrid(resp_cell))
         {
-            c->GetMap()->CreatureRespawnRelocation(c);
+            MapManager::Instance().GetMap(c->GetMapId(), c)->CreatureRespawnRelocation(c);
             // false result ignored: will be unload with other creatures at grid
         }
     }
@@ -253,7 +255,7 @@ ObjectGridUnloader::Visit(GridRefManager<T> &m)
     {
         T *obj = m.getFirst()->getSource();
         // if option set then object already saved at this moment
-        if(!sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATLY))
+        if(!sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY))
             obj->SaveRespawnTime();
         ///- object must be out of world before delete
         obj->RemoveFromWorld();
@@ -274,7 +276,7 @@ ObjectGridUnloader::Visit(CreatureMapType &m)
     {
         Creature *obj = m.getFirst()->getSource();
         // if option set then object already saved at this moment
-        if(!sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATLY))
+        if(!sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY))
             obj->SaveRespawnTime();
         ///- object will get delinked from the manager when deleted
         delete obj;

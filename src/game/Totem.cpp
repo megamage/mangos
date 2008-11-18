@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Totem.h"
@@ -35,7 +37,7 @@ Totem::Totem() : Creature()
 void Totem::Update( uint32 time )
 {
     Unit *owner = GetOwner();
-    if (!owner || !owner->isAlive() || !isAlive())
+    if (!owner || !owner->isAlive() || !this->isAlive())
     {
         UnSummon();                                         // remove self
         return;
@@ -54,20 +56,34 @@ void Totem::Update( uint32 time )
 
 void Totem::Summon(Unit* owner)
 {
-    sLog.outDebug("AddObject at Totem.cpp line 49");
+    CreatureInfo const *cinfo = GetCreatureInfo();
+    if (owner->GetTypeId()==TYPEID_PLAYER && cinfo)
+    {
+        uint32 modelid = 0;
+        if(((Player*)owner)->GetTeam() == HORDE)
+        {
+            if(cinfo->Modelid3)
+                modelid = cinfo->Modelid3;
+            else if(cinfo->Modelid4)
+                modelid = cinfo->Modelid4;
+        }
+        else
+        {
+            if(cinfo->Modelid1)
+                modelid = cinfo->Modelid1;
+            else if(cinfo->Modelid2)
+                modelid = cinfo->Modelid2;
+        }
+        if (modelid)
+            SetDisplayId(modelid);
+        else
+            sLog.outErrorDb("Totem::Summon: Missing modelid information for entry %u, team %u, totem will use default values.",GetEntry(),((Player*)owner)->GetTeam());
+    }
 
+    // Only add if a display exists.
+    sLog.outDebug("AddObject at Totem.cpp line 49");
     SetInstanceId(owner->GetInstanceId());
     owner->GetMap()->Add((Creature*)this);
-
-    // select totem model in dependent from owner team
-    CreatureInfo const *cinfo = GetCreatureInfo();
-    if(owner->GetTypeId()==TYPEID_PLAYER && cinfo)
-    {
-        if(((Player*)owner)->GetTeam()==HORDE)
-            SetDisplayId(cinfo->DisplayID_H);
-        else
-            SetDisplayId(cinfo->DisplayID_A);
-    }
 
     WorldPacket data(SMSG_GAMEOBJECT_SPAWN_ANIM_OBSOLETE, 8);
     data << GetGUID();
@@ -89,7 +105,7 @@ void Totem::UnSummon()
 
     CombatStop();
     RemoveAurasDueToSpell(GetSpell());
-    Unit *owner = GetOwner();
+    Unit *owner = this->GetOwner();
     if (owner)
     {
         // clear owenr's totem slot
@@ -130,11 +146,11 @@ void Totem::SetOwner(uint64 guid)
 {
     SetUInt64Value(UNIT_FIELD_SUMMONEDBY, guid);
     SetUInt64Value(UNIT_FIELD_CREATEDBY, guid);
-    Unit *owner = GetOwner();
+    Unit *owner = this->GetOwner();
     if (owner)
     {
-        setFaction(owner->getFaction());
-        SetLevel(owner->getLevel());
+        this->setFaction(owner->getFaction());
+        this->SetLevel(owner->getLevel());
     }
 }
 

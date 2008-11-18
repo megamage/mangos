@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,14 +41,14 @@
 
 #include <cmath>
 
-#define CLASS_LOCK MaNGOS::ClassLevelLockable<ObjectAccessor, ZThread::FastMutex>
+#define CLASS_LOCK Trinity::ClassLevelLockable<ObjectAccessor, ZThread::FastMutex>
 INSTANTIATE_SINGLETON_2(ObjectAccessor, CLASS_LOCK);
 INSTANTIATE_CLASS_MUTEX(ObjectAccessor, ZThread::FastMutex);
 
-namespace MaNGOS
+namespace Trinity
 {
 
-    struct MANGOS_DLL_DECL BuildUpdateForPlayer
+    struct TRINITY_DLL_DECL BuildUpdateForPlayer
     {
         Player &i_player;
         UpdateDataMapType &i_updatePlayers;
@@ -140,15 +142,7 @@ Creature*
 ObjectAccessor::GetCreature(WorldObject const &u, uint64 guid)
 {
     Creature * ret = GetObjectInWorld(guid, (Creature*)NULL);
-    if(!ret)
-        return NULL;
-
-    if(ret->GetMapId() != u.GetMapId())
-        return NULL;
-
-    if(ret->GetInstanceId() != u.GetInstanceId())
-        return NULL;
-
+    if(ret && ret->GetMapId() != u.GetMapId()) ret = NULL;
     return ret;
 }
 
@@ -254,6 +248,32 @@ ObjectAccessor::SaveAllPlayers()
 }
 
 void
+ObjectAccessor::_update()
+{
+    UpdateDataMapType update_players;
+    {
+        Guard guard(i_updateGuard);
+        while(!i_objects.empty())
+        {
+            Object* obj = *i_objects.begin();
+            i_objects.erase(i_objects.begin());
+            if (!obj)
+                continue;
+            _buildUpdateObject(obj, update_players);
+            obj->ClearUpdateMask(false);
+        }
+    }
+
+    WorldPacket packet;                                     // here we allocate a std::vector with a size of 0x10000
+    for(UpdateDataMapType::iterator iter = update_players.begin(); iter != update_players.end(); ++iter)
+    {
+        iter->second.BuildPacket(&packet);
+        iter->first->GetSession()->SendPacket(&packet);
+        packet.clear();                                     // clean the string
+    }
+}
+
+void
 ObjectAccessor::UpdateObject(Object* obj, Player* exceptPlayer)
 {
     UpdateDataMapType update_players;
@@ -334,14 +354,14 @@ ObjectAccessor::_buildPacket(Player *pl, Object *obj, UpdateDataMapType &update_
 void
 ObjectAccessor::_buildChangeObjectForPlayer(WorldObject *obj, UpdateDataMapType &update_players)
 {
-    CellPair p = MaNGOS::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
     cell.SetNoCreate();
     WorldObjectChangeAccumulator notifier(*obj, update_players);
     TypeContainerVisitor<WorldObjectChangeAccumulator, WorldTypeMapContainer > player_notifier(notifier);
     CellLock<GridReadGuard> cell_lock(cell, p);
-    cell_lock->Visit(cell_lock, player_notifier, *obj->GetMap());
+    cell_lock->Visit(cell_lock, player_notifier, *MapManager::Instance().GetMap(obj->GetMapId(), obj));
 }
 
 Pet*
@@ -374,7 +394,7 @@ ObjectAccessor::RemoveCorpse(Corpse *corpse)
         return;
 
     // build mapid*cellid -> guid_set map
-    CellPair cell_pair = MaNGOS::ComputeCellPair(corpse->GetPositionX(), corpse->GetPositionY());
+    CellPair cell_pair = Trinity::ComputeCellPair(corpse->GetPositionX(), corpse->GetPositionY());
     uint32 cell_id = (cell_pair.y_coord*TOTAL_NUMBER_OF_CELLS_PER_MAP) + cell_pair.x_coord;
 
     objmgr.DeleteCorpseCellData(corpse->GetMapId(),cell_id,corpse->GetOwnerGUID());
@@ -393,7 +413,7 @@ ObjectAccessor::AddCorpse(Corpse *corpse)
     i_player2corpse[corpse->GetOwnerGUID()] = corpse;
 
     // build mapid*cellid -> guid_set map
-    CellPair cell_pair = MaNGOS::ComputeCellPair(corpse->GetPositionX(), corpse->GetPositionY());
+    CellPair cell_pair = Trinity::ComputeCellPair(corpse->GetPositionX(), corpse->GetPositionY());
     uint32 cell_id = (cell_pair.y_coord*TOTAL_NUMBER_OF_CELLS_PER_MAP) + cell_pair.x_coord;
 
     objmgr.AddCorpseCellData(corpse->GetMapId(),cell_id,corpse->GetOwnerGUID(),corpse->GetInstanceId());
@@ -485,62 +505,186 @@ ObjectAccessor::ConvertCorpseForPlayer(uint64 player_guid)
 }
 
 void
-ObjectAccessor::Update(uint32 diff)
+ObjectAccessor::AddActiveObject( WorldObject * obj )
 {
-    UpdateDataMapType update_players;
-    {
-        Guard guard(i_updateGuard);
-        while(!i_objects.empty())
-        {
-            Object* obj = *i_objects.begin();
-            i_objects.erase(i_objects.begin());
-            if (!obj)
-                continue;
-            _buildUpdateObject(obj, update_players);
-            obj->ClearUpdateMask(false);
-        }
-    }
-
-    WorldPacket packet;                                     // here we allocate a std::vector with a size of 0x10000
-    for(UpdateDataMapType::iterator iter = update_players.begin(); iter != update_players.end(); ++iter)
-    {
-        iter->second.BuildPacket(&packet);
-        iter->first->GetSession()->SendPacket(&packet);
-        packet.clear();                                     // clean the string
-    }
+    i_activeobjects.insert(obj);
 }
 
 void
-ObjectAccessor::UpdatePlayers(uint32 diff)
+ObjectAccessor::RemoveActiveObject( WorldObject * obj )
 {
-    HashMapHolder<Player>::MapType& playerMap = HashMapHolder<Player>::GetContainer();
-    for(HashMapHolder<Player>::MapType::iterator iter = playerMap.begin(); iter != playerMap.end(); ++iter)
-        if(iter->second->IsInWorld())
-            iter->second->Update(diff);
+    i_activeobjects.erase(obj);
+}
+
+void
+ObjectAccessor::Update(uint32 diff)
+{
+    {
+        // player update might remove the player from grid, and that causes crashes. We HAVE to update players first, and then the active objects.
+        HashMapHolder<Player>::MapType& playerMap = HashMapHolder<Player>::GetContainer();
+        for(HashMapHolder<Player>::MapType::iterator iter = playerMap.begin(); iter != playerMap.end(); ++iter)
+        {
+            if(iter->second->IsInWorld())
+            {
+                iter->second->Update(diff);
+            }
+        }
+
+        // clone the active object list, because update might remove from it
+        std::set<WorldObject *> activeobjects(i_activeobjects);
+
+        std::set<WorldObject *>::iterator itr, next;
+        for(itr = activeobjects.begin(); itr != activeobjects.end(); itr = next)
+        {
+            next = itr;
+            ++next;
+            if((*itr)->IsInWorld())
+                (*itr)->GetMap()->resetMarkedCells();
+            else
+                activeobjects.erase(itr);
+        }
+
+        Map *map;
+
+        Trinity::ObjectUpdater updater(diff);
+        // for creature
+        TypeContainerVisitor<Trinity::ObjectUpdater, GridTypeMapContainer  > grid_object_update(updater);
+        // for pets
+        TypeContainerVisitor<Trinity::ObjectUpdater, WorldTypeMapContainer > world_object_update(updater);
+
+        for(itr = activeobjects.begin(); itr != activeobjects.end(); ++itr)
+        {
+            WorldObject *obj = (*itr);
+            map = obj->GetMap();
+
+            CellPair standing_cell(Trinity::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY()));
+
+            // Check for correctness of standing_cell, it also avoids problems with update_cell
+            if (standing_cell.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || standing_cell.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP)
+                continue;
+
+            // the overloaded operators handle range checking
+            // so ther's no need for range checking inside the loop
+            CellPair begin_cell(standing_cell), end_cell(standing_cell);
+            begin_cell << 1; begin_cell -= 1;               // upper left
+            end_cell >> 1; end_cell += 1;                   // lower right
+
+            for(uint32 x = begin_cell.x_coord; x <= end_cell.x_coord; x++)
+            {
+                for(uint32 y = begin_cell.y_coord; y <= end_cell.y_coord; y++)
+                {
+                    uint32 cell_id = (y * TOTAL_NUMBER_OF_CELLS_PER_MAP) + x;
+                    if( !map->isCellMarked(cell_id) )
+                    {
+                        CellPair cell_pair(x,y);
+                        map->markCell(cell_id);
+                        Cell cell(cell_pair);
+                        cell.data.Part.reserved = CENTER_DISTRICT;
+                        cell.SetNoCreate();
+                        CellLock<NullGuard> cell_lock(cell, cell_pair);
+                        cell_lock->Visit(cell_lock, grid_object_update,  *map);
+                        cell_lock->Visit(cell_lock, world_object_update, *map);
+                    }
+                }
+            }
+        }
+    }
+
+    _update();
+}
+
+bool
+ObjectAccessor::ActiveObjectsNearGrid(uint32 x, uint32 y, uint32 m_id, uint32 i_id) const
+{
+    CellPair cell_min(x*MAX_NUMBER_OF_CELLS, y*MAX_NUMBER_OF_CELLS);
+    CellPair cell_max(cell_min.x_coord + MAX_NUMBER_OF_CELLS, cell_min.y_coord+MAX_NUMBER_OF_CELLS);
+    cell_min << 2;
+    cell_min -= 2;
+    cell_max >> 2;
+    cell_max += 2;
+
+    for(std::set<WorldObject*>::const_iterator itr = i_activeobjects.begin(); itr != i_activeobjects.end(); ++itr)
+    {
+        if( m_id != (*itr)->GetMapId() || i_id != (*itr)->GetInstanceId() )
+            continue;
+
+        CellPair p = Trinity::ComputeCellPair((*itr)->GetPositionX(), (*itr)->GetPositionY());
+        if( (cell_min.x_coord <= p.x_coord && p.x_coord <= cell_max.x_coord) &&
+            (cell_min.y_coord <= p.y_coord && p.y_coord <= cell_max.y_coord) )
+            return true;
+    }
+
+    return false;
 }
 
 void
 ObjectAccessor::WorldObjectChangeAccumulator::Visit(PlayerMapType &m)
 {
     for(PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
-        if(iter->getSource()->HaveAtClient(&i_object))
-            ObjectAccessor::_buildPacket(iter->getSource(), &i_object, i_updateDatas);
+    {
+        BuildPacket(iter->getSource());
+        if (!iter->getSource()->GetSharedVisionList().empty())
+        {
+            SharedVisionList::const_iterator it = iter->getSource()->GetSharedVisionList().begin();
+            for ( ; it != iter->getSource()->GetSharedVisionList().end(); ++it)
+                BuildPacket(*it);
+        }
+    }
+}
+
+void
+ObjectAccessor::WorldObjectChangeAccumulator::Visit(CreatureMapType &m)
+{
+    for(CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+    {
+        if (!iter->getSource()->GetSharedVisionList().empty())
+        {
+            SharedVisionList::const_iterator it = iter->getSource()->GetSharedVisionList().begin();
+            for ( ; it != iter->getSource()->GetSharedVisionList().end(); ++it)
+                BuildPacket(*it);
+        }
+    }
+}
+
+void
+ObjectAccessor::WorldObjectChangeAccumulator::Visit(DynamicObjectMapType &m)
+{
+    for(DynamicObjectMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+    {
+        if (IS_PLAYER_GUID(iter->getSource()->GetCasterGUID()))
+        {
+            Player* caster = (Player*)iter->getSource()->GetCaster();
+            if (caster->GetUInt64Value(PLAYER_FARSIGHT) == iter->getSource()->GetGUID())
+                BuildPacket(caster);
+        }
+    }
+}
+
+void
+ObjectAccessor::WorldObjectChangeAccumulator::BuildPacket(Player* plr)
+{
+    // Only send update once to a player
+    if (plr_list.find(plr->GetGUID()) == plr_list.end() && plr->HaveAtClient(&i_object))
+    {
+        ObjectAccessor::_buildPacket(plr, &i_object, i_updateDatas);
+        plr_list.insert(plr->GetGUID());
+    }
 }
 
 void
 ObjectAccessor::UpdateObjectVisibility(WorldObject *obj)
 {
-    CellPair p = MaNGOS::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
     Cell cell(p);
 
-    obj->GetMap()->UpdateObjectVisibility(obj,cell,p);
+    MapManager::Instance().GetMap(obj->GetMapId(), obj)->UpdateObjectVisibility(obj,cell,p);
 }
 
 void ObjectAccessor::UpdateVisibilityForPlayer( Player* player )
 {
-    CellPair p = MaNGOS::ComputeCellPair(player->GetPositionX(), player->GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(player->GetPositionX(), player->GetPositionY());
     Cell cell(p);
-    Map* m = player->GetMap();
+    Map* m = MapManager::Instance().GetMap(player->GetMapId(),player);
 
     m->UpdatePlayerVisibility(player,cell,p);
     m->UpdateObjectsVisibilityFor(player,cell,p);

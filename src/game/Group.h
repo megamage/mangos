@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,16 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOSSERVER_GROUP_H
-#define MANGOSSERVER_GROUP_H
+#ifndef TRINITYCORE_GROUP_H
+#define TRINITYCORE_GROUP_H
 
 #include "GroupReference.h"
 #include "GroupRefManager.h"
@@ -127,7 +129,7 @@ struct InstanceGroupBind
 
 /** request member stats checken **/
 /** todo: uninvite people that not accepted invite **/
-class MANGOS_DLL_SPEC Group
+class TRINITY_DLL_SPEC Group
 {
     public:
         struct MemberSlot
@@ -182,7 +184,7 @@ class MANGOS_DLL_SPEC Group
 
         // member manipulation methods
         bool IsMember(const uint64& guid) const { return _getMemberCSlot(guid) != m_memberSlots.end(); }
-        bool IsLeader(const uint64& guid) const { return (GetLeaderGUID() == guid); }
+		bool IsLeader(const uint64& guid) const { return (GetLeaderGUID() == guid); }
         bool IsAssistant(uint64 guid) const
         {
             member_citerator mslot = _getMemberCSlot(guid);
@@ -209,11 +211,11 @@ class MANGOS_DLL_SPEC Group
 
             return (mslot1->group==slot2->group);
         }
-
-        bool HasFreeSlotSubGroup(uint8 subgroup) const
-        {
-            return (m_subGroupsCounts && m_subGroupsCounts[subgroup] < MAXGROUPSIZE);
-        }
+		
+		bool HasFreeSlotSubGroup(uint8 subgroup) const
+		{
+			return (m_subGroupsCounts && m_subGroupsCounts[subgroup] < MAXGROUPSIZE);
+		}
 
         bool SameSubGroup(Player const* member1, Player const* member2) const;
 
@@ -234,6 +236,7 @@ class MANGOS_DLL_SPEC Group
         void ConvertToRaid();
 
         void SetBattlegroundGroup(BattleGround *bg) { m_bgGroup = bg; }
+        uint32 CanJoinBattleGroundQueue(uint32 bgTypeId, uint32 bgQueueType, uint32 MinPlayerCount, uint32 MaxPlayerCount, bool isRated, uint32 arenaSlot);
 
         void ChangeMembersGroup(const uint64 &guid, const uint8 &group);
         void ChangeMembersGroup(Player *player, const uint8 &group);
@@ -288,8 +291,8 @@ class MANGOS_DLL_SPEC Group
         void SendLootRollWon(const uint64& SourceGuid, const uint64& TargetGuid, uint8 RollNumber, uint8 RollType, const Roll &r);
         void SendLootAllPassed(uint32 NumberOfPlayers, const Roll &r);
         void GroupLoot(const uint64& playerGUID, Loot *loot, Creature *creature);
-        void NeedBeforeGreed(const uint64& playerGUID, Loot *loot, Creature *creature);
-        void MasterLoot(const uint64& playerGUID, Loot *loot, Creature *creature);
+		void NeedBeforeGreed(const uint64& playerGUID, Loot *loot, Creature *creature);
+		void MasterLoot(const uint64& playerGUID, Loot *loot, Creature *creature);
         Rolls::iterator GetRoll(uint64 Guid)
         {
             Rolls::iterator iter;
@@ -328,18 +331,18 @@ class MANGOS_DLL_SPEC Group
         bool _setMainAssistant(const uint64 &guid);
 
         void _homebindIfInstance(Player *player);
-
-        void _initRaidSubGroupsCounter()
-        {
-            // Sub group counters initialization
-            if (!m_subGroupsCounts)
-                m_subGroupsCounts = new uint8[MAXRAIDSIZE / MAXGROUPSIZE];
-
-            memset((void*)m_subGroupsCounts, 0, (MAXRAIDSIZE / MAXGROUPSIZE)*sizeof(uint8));
-
-            for (member_citerator itr = m_memberSlots.begin(); itr != m_memberSlots.end(); ++itr)
-                ++m_subGroupsCounts[itr->group];
-        }
+		
+		void _initRaidSubGroupsCounter()
+		{
+			// Sub group counters initialization
+			if (!m_subGroupsCounts)
+				m_subGroupsCounts = new uint8[MAXRAIDSIZE / MAXGROUPSIZE];
+				
+			memset((void*)m_subGroupsCounts, 0, (MAXRAIDSIZE / MAXGROUPSIZE)*sizeof(uint8));
+			
+			for (member_citerator itr = m_memberSlots.begin(); itr != m_memberSlots.end(); ++itr)
+				++m_subGroupsCounts[itr->group];
+		}
 
         member_citerator _getMemberCSlot(uint64 Guid) const
         {
@@ -360,18 +363,18 @@ class MANGOS_DLL_SPEC Group
             }
             return m_memberSlots.end();
         }
-
-        void SubGroupCounterIncrease(uint8 subgroup)
-        {
-            if (m_subGroupsCounts)
-                ++m_subGroupsCounts[subgroup];
-        }
-
-        void SubGroupCounterDecrease(uint8 subgroup)
-        {
-            if (m_subGroupsCounts)
-                --m_subGroupsCounts[subgroup];
-        }
+		
+		void SubGroupCounterIncrease(uint8 subgroup)
+		{
+			if (m_subGroupsCounts)
+				++m_subGroupsCounts[subgroup];
+		}
+		
+		void SubGroupCounterDecrease(uint8 subgroup)
+		{
+			if (m_subGroupsCounts)
+				--m_subGroupsCounts[subgroup];
+		}
 
         MemberSlotList      m_memberSlots;
         GroupRefManager     m_memberMgr;
@@ -389,6 +392,6 @@ class MANGOS_DLL_SPEC Group
         uint64              m_looterGuid;
         Rolls               RollId;
         BoundInstancesMap   m_boundInstances[TOTAL_DIFFICULTIES];
-        uint8*              m_subGroupsCounts;
+		uint8*              m_subGroupsCounts;
 };
 #endif

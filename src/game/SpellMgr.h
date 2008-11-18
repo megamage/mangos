@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _SPELLMGR_H
@@ -222,11 +224,13 @@ enum SpellFamilyNames
     SPELLFAMILY_PALADIN     = 10,
     SPELLFAMILY_SHAMAN      = 11,
     SPELLFAMILY_UNK2        = 12,
-    SPELLFAMILY_POTION      = 13,
-    // 14 - unused
-    SPELLFAMILY_DEATHKNIGHT = 15,
-    // 16 - unused
-    SPELLFAMILY_UNK3        = 17
+    SPELLFAMILY_POTION      = 13
+};
+
+enum SpellDisableTypes
+{
+    SPELL_DISABLE_PLAYER = 1,
+    SPELL_DISABLE_CREATURE = 2
 };
 
 //Some SpellFamilyFlags
@@ -257,7 +261,8 @@ enum SpellSpecific
     SPELL_JUDGEMENT         = 13,
     SPELL_BATTLE_ELIXIR     = 14,
     SPELL_GUARDIAN_ELIXIR   = 15,
-    SPELL_FLASK_ELIXIR      = 16
+    SPELL_FLASK_ELIXIR      = 16,
+    SPELL_WARLOCK_CORRUPTION= 17
 };
 
 SpellSpecific GetSpellSpecific(uint32 spellId);
@@ -279,7 +284,7 @@ inline bool IsSpellHaveEffect(SpellEntry const *spellInfo, SpellEffects effect)
     return false;
 }
 
-bool IsNoStackAuraDueToAura(uint32 spellId_1, uint32 effIndex_1, uint32 spellId_2, uint32 effIndex_2);
+//bool IsNoStackAuraDueToAura(uint32 spellId_1, uint32 effIndex_1, uint32 spellId_2, uint32 effIndex_2);
 
 inline bool IsSealSpell(SpellEntry const *spellInfo)
 {
@@ -296,6 +301,7 @@ inline bool IsElementalShield(SpellEntry const *spellInfo)
 
 int32 CompareAuraRanks(uint32 spellId_1, uint32 effIndex_1, uint32 spellId_2, uint32 effIndex_2);
 bool IsSingleFromSpellSpecificPerCaster(uint32 spellSpec1,uint32 spellSpec2);
+bool IsSingleFromSpellSpecificPerTarget(uint32 spellSpec1,uint32 spellSpec2);
 bool IsPassiveSpell(uint32 spellId);
 
 inline bool IsDeathPersistentSpell(SpellEntry const *spellInfo)
@@ -423,7 +429,7 @@ inline Mechanics GetEffectMechanic(SpellEntry const* spellInfo, int32 effect)
 
 inline uint32 GetDispellMask(DispelType dispel)
 {
-    // If dispell all
+    // If dispel all
     if (dispel == DISPEL_ALL)
         return DISPEL_ALL_MASK;
     else
@@ -630,6 +636,17 @@ inline bool IsProfessionSkill(uint32 skill)
     return  IsPrimaryProfessionSkill(skill) || skill == SKILL_FISHING || skill == SKILL_COOKING || skill == SKILL_FIRST_AID;
 }
 
+#define SPELL_ATTR_CU_PLAYERS_ONLY      0x00000001
+#define SPELL_ATTR_CU_CONE_BACK         0x00000002
+#define SPELL_ATTR_CU_CONE_LINE         0x00000004
+#define SPELL_ATTR_CU_SHARE_DAMAGE      0x00000008
+#define SPELL_ATTR_CU_EFFECT_HEAL       0x00000010
+#define SPELL_ATTR_CU_EFFECT_DAMAGE     0x00000020
+
+typedef std::map<uint32, uint32> SpellCustomAttrMap;
+
+typedef std::map<int32, std::vector<int32> > SpellLinkedMap;
+
 class SpellMgr
 {
     // Constructors
@@ -752,7 +769,7 @@ class SpellMgr
 
         bool IsRankSpellDueToSpell(SpellEntry const *spellInfo_1,uint32 spellId_2) const;
         static bool canStackSpellRanks(SpellEntry const *spellInfo);
-        bool IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) const;
+        bool IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2, bool isFromTheSameCaster ) const;
 
         SpellEntry const* SelectAuraRankForPlayerLevel(SpellEntry const* spellInfo, uint32 playerLevel) const;
 
@@ -828,6 +845,21 @@ class SpellMgr
                 return NULL;
         }
 
+        uint32 GetSpellCustomAttr(uint32 spell_id) const
+        {
+            SpellCustomAttrMap::const_iterator itr = mSpellCustomAttrMap.find(spell_id);
+            if(itr != mSpellCustomAttrMap.end())
+                return itr->second;
+            else
+                return 0;
+        }
+
+        const std::vector<int32> *GetSpellLinked(int32 spell_id) const
+        {
+            SpellLinkedMap::const_iterator itr = mSpellLinkedMap.find(spell_id);
+            return itr != mSpellLinkedMap.end() ? &(itr->second) : NULL;
+        }
+
         // Modifiers
     public:
         static SpellMgr& Instance();
@@ -844,6 +876,8 @@ class SpellMgr
         void LoadSpellThreats();
         void LoadSkillLineAbilityMap();
         void LoadSpellPetAuras();
+        void LoadSpellCustomAttr();
+        void LoadSpellLinked();
 
     private:
         SpellScriptTarget  mSpellScriptTarget;
@@ -857,6 +891,8 @@ class SpellMgr
         SpellProcEventMap  mSpellProcEventMap;
         SkillLineAbilityMap mSkillLineAbilityMap;
         SpellPetAuraMap     mSpellPetAuraMap;
+        SpellCustomAttrMap  mSpellCustomAttrMap;
+        SpellLinkedMap      mSpellLinkedMap;
 };
 
 #define spellmgr SpellMgr::Instance()

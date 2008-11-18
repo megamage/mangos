@@ -84,7 +84,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Win32"
+			Name="Debug|x64"
 			OutputDirectory=".\zthread__$(PlatformName)_$(ConfigurationName)"
 			IntermediateDirectory=".\zthread__$(PlatformName)_$(ConfigurationName)"
 			ConfigurationType="4"
@@ -105,14 +105,16 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
+				TargetEnvironment="3"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/MP"
+				Optimization="0"
 				AdditionalIncludeDirectories="..\..\dep\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_DEPRECATE"
-				RuntimeLibrary="2"
-				EnableEnhancedInstructionSet="1"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_DEPRECATE"
+				MinimalRebuild="true"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="3"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\zthread__$(PlatformName)_$(ConfigurationName)\zthread.pch"
@@ -150,7 +152,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Debug|x64"
+			Name="Release|Win32"
 			OutputDirectory=".\zthread__$(PlatformName)_$(ConfigurationName)"
 			IntermediateDirectory=".\zthread__$(PlatformName)_$(ConfigurationName)"
 			ConfigurationType="4"
@@ -171,16 +173,14 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TargetEnvironment="3"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="0"
+				AdditionalOptions="/MP"
 				AdditionalIncludeDirectories="..\..\dep\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_DEPRECATE"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_DEPRECATE"
+				RuntimeLibrary="2"
+				EnableEnhancedInstructionSet="1"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\zthread__$(PlatformName)_$(ConfigurationName)\zthread.pch"

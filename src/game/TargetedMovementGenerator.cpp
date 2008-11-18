@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "ByteBuffer.h"
@@ -57,8 +59,8 @@ TargetedMovementGenerator<T>::_setTargetLocation(T &owner)
     float x, y, z;
     if(!i_offset)
     {
-        // to nearest contact position
-        i_target->GetContactPoint( &owner, x, y, z );
+        // to nearest random contact position 
+        i_target->GetRandomContactPoint( &owner, x, y, z, 0.5f, ATTACK_DISTANCE - 0.5f );
     }
     else
     {
@@ -99,7 +101,7 @@ TargetedMovementGenerator<T>::Initialize(T &owner)
 
     if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->canFly())
         owner.AddUnitMovementFlag(MOVEMENTFLAG_FLYING2);
-
+    
     _setTargetLocation(owner);
 }
 
@@ -162,7 +164,7 @@ TargetedMovementGenerator<T>::Update(T &owner, const uint32 & time_diff)
         if (owner.GetObjectSize())
             i_destinationHolder.ResetUpdate(50);
 
-        float dist = i_target->GetObjectSize() + owner.GetObjectSize() + sWorld.getRate(RATE_TARGET_POS_RECALCULATION_RANGE);
+        float dist = owner.GetCombatReach() + i_target.getTarget()->GetCombatReach() + sWorld.getRate(RATE_TARGET_POS_RECALCULATION_RANGE);
 
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
 
@@ -183,7 +185,7 @@ TargetedMovementGenerator<T>::Update(T &owner, const uint32 & time_diff)
             owner.SetInFront(i_target.getTarget());
 
             owner.StopMoving();
-            if(owner.canReachWithAttack(i_target.getTarget()) && !owner.hasUnitState(UNIT_STAT_FOLLOW))
+            if(owner.IsWithinCombatDist(i_target.getTarget(), ATTACK_DISTANCE) && !owner.hasUnitState(UNIT_STAT_FOLLOW))
                 owner.Attack(i_target.getTarget(),true);
         }
     }

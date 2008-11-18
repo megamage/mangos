@@ -1,4 +1,6 @@
-# Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+# Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+#
+# Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +21,7 @@
 ## Sub-directories to parse
 
 ## CPP flags for includes, defines, etc.
-AM_CPPFLAGS = $(MANGOS_INCLUDES) -I$(srcdir)
+AM_CPPFLAGS = $(TRINI_INCLUDES) -I$(srcdir)
 
 ## Build MaNGOS framework library as convenience library.
 #  libMaNGOSScript shared library will later be reused by world server daemon.

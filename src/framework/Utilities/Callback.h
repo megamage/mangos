@@ -1,5 +1,7 @@
-/*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+/* 
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,20 +10,20 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOS_CALLBACK_H
-#define MANGOS_CALLBACK_H
+#ifndef TRINITY_CALLBACK_H
+#define TRINITY_CALLBACK_H
 
 /// ------------ BASE CLASSES ------------
 
-namespace MaNGOS
+namespace Trinity
 {
     template < class Class, typename ParamType1 = void, typename ParamType2 = void, typename ParamType3 = void, typename ParamType4 = void >
     class _Callback
@@ -140,7 +142,7 @@ namespace MaNGOS
             void _Execute() { (*m_method)(m_param1, m_param2, m_param3); }
         public:
             _SCallback(Method method, ParamType1 param1, ParamType2 param2, ParamType3 param3)
-                : m_method(method), m_param1(param1), m_param2(param2), m_param3(param3) {}
+                : m_method(method), m_param1(param1), m_param2(param2) {}
             _SCallback(_SCallback < ParamType1, ParamType2, ParamType3 > const& cb)
                 : m_method(cb.m_method), m_param1(cb.m_param1), m_param2(cb.m_param2), m_param3(cb.m_param3) {}
     };
@@ -193,7 +195,7 @@ namespace MaNGOS
 
 /// --------- GENERIC CALLBACKS ----------
 
-namespace MaNGOS
+namespace Trinity
 {
     class ICallback
     {
@@ -269,7 +271,7 @@ namespace MaNGOS
 
 class QueryResult;
 
-namespace MaNGOS
+namespace Trinity
 {
     class IQueryCallback
     {

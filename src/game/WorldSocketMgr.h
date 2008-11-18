@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008,2007 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 /** \addtogroup u2w User to World Communication
@@ -34,7 +36,7 @@ class ReactorRunnable;
 class ACE_Event_Handler;
 
 /// Manages all sockets connected to peers and network threads
-class WorldSocketMgr
+class WorldSocketMgr 
 {
 public:
   friend class WorldSocket;
@@ -42,37 +44,36 @@ public:
 
   /// Start network, listen at address:port .
   int StartNetwork (ACE_UINT16 port, const char* address);
-
+  
   /// Stops all network threads, It will wait for all running threads .
   void StopNetwork ();
-
+  
   /// Wait untill all network threads have "joined" .
   void Wait ();
-
+  
   /// Make this class singleton .
   static WorldSocketMgr* Instance ();
-
+  
 private:
   int OnSocketOpen(WorldSocket* sock);
-
+  
   int StartReactiveIO(ACE_UINT16 port, const char* address);
-
-private:
+  
+private:  
   WorldSocketMgr ();
   virtual ~WorldSocketMgr ();
-
+  
   ReactorRunnable* m_NetThreads;
   size_t m_NetThreadsCount;
-
+  
   int m_SockOutKBuff;
   int m_SockOutUBuff;
   bool m_UseNoDelay;
-
+  
   ACE_Event_Handler* m_Acceptor;
 };
 
 #define sWorldSocketMgr WorldSocketMgr::Instance ()
-
 
 #endif
 /// @}

@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -35,6 +37,7 @@
 #include "CellImpl.h"
 #include "InstanceData.h"
 #include "BattleGround.h"
+#include "OutdoorPvPMgr.h"
 #include "Util.h"
 
 GameObject::GameObject() : WorldObject()
@@ -79,17 +82,17 @@ void GameObject::AddToWorld()
 {
     ///- Register the gameobject for guid lookup
     if(!IsInWorld()) ObjectAccessor::Instance().AddObject(this);
-    Object::AddToWorld();
+    WorldObject::AddToWorld();
 }
 
 void GameObject::RemoveFromWorld()
 {
     ///- Remove the gameobject from the accessor
     if(IsInWorld()) ObjectAccessor::Instance().RemoveObject(this);
-    Object::RemoveFromWorld();
+    WorldObject::RemoveFromWorld();
 }
 
-bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, uint32 go_state)
+bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, uint32 go_state, uint32 ArtKit)
 {
     Relocate(x,y,z,ang);
     SetMapId(map->GetId());
@@ -133,7 +136,7 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float
     SetUInt32Value(GAMEOBJECT_FACTION, goinfo->faction);
     SetUInt32Value(GAMEOBJECT_FLAGS, goinfo->flags);
 
-    SetEntry(goinfo->id);
+    SetUInt32Value(OBJECT_FIELD_ENTRY, goinfo->id);
 
     SetUInt32Value(GAMEOBJECT_DISPLAYID, goinfo->displayId);
 
@@ -141,6 +144,8 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float
     SetGoType(GameobjectTypes(goinfo->type));
 
     SetGoAnimProgress(animprogress);
+
+    SetUInt32Value (GAMEOBJECT_ARTKIT, ArtKit);
 
     // Spell charges for GAMEOBJECT_TYPE_SPELLCASTER (22)
     if (goinfo->type == GAMEOBJECT_TYPE_SPELLCASTER)
@@ -258,7 +263,7 @@ void GameObject::Update(uint32 /*p_time*/)
                                 return;
                             }
                                                             // respawn timer
-                            GetMap()->Add(this);
+                            MapManager::Instance().GetMap(GetMapId(), this)->Add(this);
                             break;
                     }
                 }
@@ -295,7 +300,7 @@ void GameObject::Update(uint32 /*p_time*/)
 
                 bool NeedDespawn = (goInfo->trap.charges != 0);
 
-                CellPair p(MaNGOS::ComputeCellPair(GetPositionX(),GetPositionY()));
+                CellPair p(Trinity::ComputeCellPair(GetPositionX(),GetPositionY()));
                 Cell cell(p);
                 cell.data.Part.reserved = ALL_DISTRICT;
 
@@ -303,19 +308,19 @@ void GameObject::Update(uint32 /*p_time*/)
                 // search unfriendly creature
                 if(owner && NeedDespawn)                    // hunter trap
                 {
-                    MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, owner, radius);
-                    MaNGOS::UnitSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck> checker(ok, u_check);
+                    Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, owner, radius);
+                    Trinity::UnitSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> checker(ok, u_check);
 
                     CellLock<GridReadGuard> cell_lock(cell, p);
 
-                    TypeContainerVisitor<MaNGOS::UnitSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck>, GridTypeMapContainer > grid_object_checker(checker);
-                    cell_lock->Visit(cell_lock, grid_object_checker, *GetMap());
+                    TypeContainerVisitor<Trinity::UnitSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck>, GridTypeMapContainer > grid_object_checker(checker);
+                    cell_lock->Visit(cell_lock, grid_object_checker, *MapManager::Instance().GetMap(GetMapId(), this));
 
                     // or unfriendly player/pet
                     if(!ok)
                     {
-                        TypeContainerVisitor<MaNGOS::UnitSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck>, WorldTypeMapContainer > world_object_checker(checker);
-                        cell_lock->Visit(cell_lock, world_object_checker, *GetMap());
+                        TypeContainerVisitor<Trinity::UnitSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck>, WorldTypeMapContainer > world_object_checker(checker);
+                        cell_lock->Visit(cell_lock, world_object_checker, *MapManager::Instance().GetMap(GetMapId(), this));
                     }
                 }
                 else                                        // environmental trap
@@ -324,21 +329,22 @@ void GameObject::Update(uint32 /*p_time*/)
 
                     // affect only players
                     Player* p_ok = NULL;
-                    MaNGOS::AnyPlayerInObjectRangeCheck p_check(this, radius);
-                    MaNGOS::PlayerSearcher<MaNGOS::AnyPlayerInObjectRangeCheck>  checker(p_ok, p_check);
+                    Trinity::AnyPlayerInObjectRangeCheck p_check(this, radius);
+                    Trinity::PlayerSearcher<Trinity::AnyPlayerInObjectRangeCheck>  checker(p_ok, p_check);
 
                     CellLock<GridReadGuard> cell_lock(cell, p);
 
-                    TypeContainerVisitor<MaNGOS::PlayerSearcher<MaNGOS::AnyPlayerInObjectRangeCheck>, WorldTypeMapContainer > world_object_checker(checker);
-                    cell_lock->Visit(cell_lock, world_object_checker, *GetMap());
+                    TypeContainerVisitor<Trinity::PlayerSearcher<Trinity::AnyPlayerInObjectRangeCheck>, WorldTypeMapContainer > world_object_checker(checker);
+                    cell_lock->Visit(cell_lock, world_object_checker, *MapManager::Instance().GetMap(GetMapId(), this));
                     ok = p_ok;
                 }
 
                 if (ok)
                 {
-                    Unit *caster =  owner ? owner : ok;
+                    //Unit *caster =  owner ? owner : ok;
 
-                    caster->CastSpell(ok, goInfo->trap.spellId, true);
+                    //caster->CastSpell(ok, goInfo->trap.spellId, true);
+                    CastSpell(ok, goInfo->trap.spellId);
                     m_cooldownTime = time(NULL) + 4;        // 4 seconds
 
                     if(NeedDespawn)
@@ -407,7 +413,7 @@ void GameObject::Update(uint32 /*p_time*/)
             //burning flags in some battlegrounds, if you find better condition, just add it
             if (GetGoAnimProgress() > 0)
             {
-                SendObjectDeSpawnAnim(GetGUID());
+                SendObjectDeSpawnAnim(this->GetGUID());
                 //reset flags
                 SetUInt32Value(GAMEOBJECT_FLAGS, GetGOInfo()->flags);
             }
@@ -427,7 +433,7 @@ void GameObject::Update(uint32 /*p_time*/)
             m_respawnTime = time(NULL) + m_respawnDelayTime;
 
             // if option not set then object will be saved at grid unload
-            if(sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATLY))
+            if(sWorld.getConfig(CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY))
                 SaveRespawnTime();
 
             ObjectAccessor::UpdateObjectVisibility(this);
@@ -444,7 +450,7 @@ void GameObject::Refresh()
         return;
 
     if(isSpawned())
-        GetMap()->Add(this);
+        MapManager::Instance().GetMap(GetMapId(), this)->Add(this);
 }
 
 void GameObject::AddUniqueUse(Player* player)
@@ -497,7 +503,7 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask)
 
     if (!goI)
         return;
-
+    
     if (!m_DBTableGuid)
         m_DBTableGuid = GetGUIDLow();
     // update in loaded data (changing data only in this place)
@@ -518,12 +524,13 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask)
     data.animprogress = GetGoAnimProgress();
     data.go_state = GetGoState();
     data.spawnMask = spawnMask;
+    data.ArtKit = GetUInt32Value (GAMEOBJECT_ARTKIT);
 
     // updated in DB
     std::ostringstream ss;
     ss << "INSERT INTO gameobject VALUES ( "
         << m_DBTableGuid << ", "
-        << GetEntry() << ", "
+        << GetUInt32Value (OBJECT_FIELD_ENTRY) << ", "
         << mapid << ", "
         << (uint32)spawnMask << ", "
         << GetFloatValue(GAMEOBJECT_POS_X) << ", "
@@ -535,8 +542,8 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask)
         << GetFloatValue(GAMEOBJECT_ROTATION+2) << ", "
         << GetFloatValue(GAMEOBJECT_ROTATION+3) << ", "
         << m_respawnDelayTime << ", "
-        << (uint32)GetGoAnimProgress() << ", "
-        << (uint32)GetGoState() << ")";
+        << GetGoAnimProgress() << ", "
+        << GetGoState() << ")";
 
     WorldDatabase.BeginTransaction();
     WorldDatabase.PExecuteLog("DELETE FROM gameobject WHERE guid = '%u'", m_DBTableGuid);
@@ -555,7 +562,7 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
     }
 
     uint32 entry = data->id;
-    //uint32 map_id = data->mapid;                          // already used before call
+    uint32 map_id = data->mapid;
     float x = data->posX;
     float y = data->posY;
     float z = data->posZ;
@@ -568,11 +575,12 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
 
     uint32 animprogress = data->animprogress;
     uint32 go_state = data->go_state;
+    uint32 ArtKit = data->ArtKit;
 
     m_DBTableGuid = guid;
     if (map->GetInstanceId() != 0) guid = objmgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT);
 
-    if (!Create(guid,entry, map, x, y, z, ang, rotation0, rotation1, rotation2, rotation3, animprogress, go_state) )
+    if (!Create(guid,entry, map, x, y, z, ang, rotation0, rotation1, rotation2, rotation3, animprogress, go_state, ArtKit) )
         return false;
 
     switch(GetGOInfo()->type)
@@ -778,16 +786,16 @@ void GameObject::TriggeringLinkedGameObject( uint32 trapEntry, Unit* target)
     GameObject* trapGO = NULL;
     {
         // using original GO distance
-        CellPair p(MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY()));
+        CellPair p(Trinity::ComputeCellPair(GetPositionX(), GetPositionY()));
         Cell cell(p);
         cell.data.Part.reserved = ALL_DISTRICT;
 
-        MaNGOS::NearestGameObjectEntryInObjectRangeCheck go_check(*target,trapEntry,range);
-        MaNGOS::GameObjectLastSearcher<MaNGOS::NearestGameObjectEntryInObjectRangeCheck> checker(trapGO,go_check);
+        Trinity::NearestGameObjectEntryInObjectRangeCheck go_check(*target,trapEntry,range);
+        Trinity::GameObjectLastSearcher<Trinity::NearestGameObjectEntryInObjectRangeCheck> checker(trapGO,go_check);
 
-        TypeContainerVisitor<MaNGOS::GameObjectLastSearcher<MaNGOS::NearestGameObjectEntryInObjectRangeCheck>, GridTypeMapContainer > object_checker(checker);
+        TypeContainerVisitor<Trinity::GameObjectLastSearcher<Trinity::NearestGameObjectEntryInObjectRangeCheck>, GridTypeMapContainer > object_checker(checker);
         CellLock<GridReadGuard> cell_lock(cell, p);
-        cell_lock->Visit(cell_lock, object_checker, *GetMap());
+        cell_lock->Visit(cell_lock, object_checker, *MapManager::Instance().GetMap(GetMapId(), this));
     }
 
     // found correct GO
@@ -800,16 +808,16 @@ GameObject* GameObject::LookupFishingHoleAround(float range)
 {
     GameObject* ok = NULL;
 
-    CellPair p(MaNGOS::ComputeCellPair(GetPositionX(),GetPositionY()));
+    CellPair p(Trinity::ComputeCellPair(GetPositionX(),GetPositionY()));
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
-    MaNGOS::NearestGameObjectFishingHole u_check(*this, range);
-    MaNGOS::GameObjectSearcher<MaNGOS::NearestGameObjectFishingHole> checker(ok, u_check);
+    Trinity::NearestGameObjectFishingHole u_check(*this, range);
+    Trinity::GameObjectSearcher<Trinity::NearestGameObjectFishingHole> checker(ok, u_check);
 
     CellLock<GridReadGuard> cell_lock(cell, p);
 
-    TypeContainerVisitor<MaNGOS::GameObjectSearcher<MaNGOS::NearestGameObjectFishingHole>, GridTypeMapContainer > grid_object_checker(checker);
-    cell_lock->Visit(cell_lock, grid_object_checker, *GetMap());
+    TypeContainerVisitor<Trinity::GameObjectSearcher<Trinity::NearestGameObjectFishingHole>, GridTypeMapContainer > grid_object_checker(checker);
+    cell_lock->Visit(cell_lock, grid_object_checker, *MapManager::Instance().GetMap(GetMapId(), this));
 
     return ok;
 }
@@ -827,6 +835,14 @@ void GameObject::UseDoorOrButton(uint32 time_to_restore)
 
     m_cooldownTime = time(NULL) + time_to_restore;
 
+}
+
+void GameObject::SetGoArtKit(uint32 kit)
+{
+    SetUInt32Value(GAMEOBJECT_ARTKIT, kit);
+    GameObjectData *data = const_cast<GameObjectData*>(objmgr.GetGOData(m_DBTableGuid));
+    if(data)
+        data->ArtKit = kit;
 }
 
 void GameObject::SwitchDoorOrButton(bool activate)
@@ -1184,7 +1200,7 @@ void GameObject::Use(Unit* user)
 
             Player* player = (Player*)user;
 
-            if( player->isAllowUseBattleGroundObject() )
+            if( player->isAllowUseBattleGroundObject() )     
             {
                 // in battleground check
                 BattleGround *bg = player->GetBattleGround();
@@ -1233,7 +1249,10 @@ void GameObject::Use(Unit* user)
     SpellEntry const *spellInfo = sSpellStore.LookupEntry( spellId );
     if(!spellInfo)
     {
-        sLog.outError("WORLD: unknown spell id %u at use action for gameobject (Entry: %u GoType: %u )", spellId,GetEntry(),GetGoType());
+        if(user->GetTypeId()!=TYPEID_PLAYER || !sOutdoorPvPMgr.HandleCustomSpell((Player*)user,spellId,this))
+            sLog.outError("WORLD: unknown spell id %u at use action for gameobject (Entry: %u GoType: %u )", spellId,GetEntry(),GetGoType());
+        else
+            sLog.outDebug("WORLD: %u non-dbc spell was handled by OutdoorPvP", spellId);
         return;
     }
 
@@ -1244,6 +1263,27 @@ void GameObject::Use(Unit* user)
     targets.setUnitTarget( user );
 
     spell->prepare(&targets);
+}
+
+void GameObject::CastSpell(Unit* target, uint32 spell)
+{
+    //summon world trigger
+    Creature *trigger = SummonCreature(12999, GetPositionX(), GetPositionY(), GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 1);
+    if(!trigger) return;
+
+    trigger->SetVisibility(VISIBILITY_OFF); //should this be true?
+    if(Unit *owner = GetOwner())
+    {
+        trigger->setFaction(owner->getFaction());
+        trigger->CastSpell(target, spell, true, 0, 0, owner->GetGUID());
+    }
+    else
+    {
+        trigger->setFaction(14);
+        trigger->CastSpell(target, spell, true, 0, 0, target->GetGUID());
+    }
+    //trigger->setDeathState(JUST_DIED);
+    //trigger->RemoveCorpse();
 }
 
 // overwrite WorldObject function for proper name localization

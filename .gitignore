@@ -62,3 +62,12 @@ callgrind.out.*
 #
 
 bin/*
+
+.hg
+*.user
+*.obj
+*.ncb
+*.suo
+*.orig
+win/VC90/*
+src/bindings/scripts/VC90/*

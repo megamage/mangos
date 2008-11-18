@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _PLAYER_H
@@ -31,7 +33,6 @@
 #include "Bag.h"
 #include "WorldSession.h"
 #include "Pet.h"
-#include "MapReference.h"
 #include "Util.h"                                           // for Tokens typedef
 
 #include<string>
@@ -46,6 +47,7 @@ class PlayerMenu;
 class Transport;
 class UpdateMask;
 class PlayerSocial;
+class OutdoorPvP;
 
 typedef std::deque<Mail*> PlayerMails;
 
@@ -777,7 +779,7 @@ enum TeleportToOptions
 };
 
 /// Type of environmental damages
-enum EnviromentalDamage
+enum EnvironmentalDamageType
 {
     DAMAGE_EXHAUSTED = 0,
     DAMAGE_DROWNING  = 1,
@@ -827,7 +829,7 @@ struct InstancePlayerBind
     InstancePlayerBind() : save(NULL), perm(false) {}
 };
 
-class MANGOS_DLL_SPEC PlayerTaxi
+class TRINITY_DLL_SPEC PlayerTaxi
 {
     public:
         PlayerTaxi();
@@ -878,7 +880,7 @@ class MANGOS_DLL_SPEC PlayerTaxi
         std::deque<uint32> m_TaxiDestinations;
 };
 
-class MANGOS_DLL_SPEC Player : public Unit
+class TRINITY_DLL_SPEC Player : public Unit
 {
     friend class WorldSession;
     friend void Item::AddToUpdateQueueOf(Player *player);
@@ -894,6 +896,19 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         void AddToWorld();
         void RemoveFromWorld();
+        // always active
+        void setActive(bool) {}
+
+        void SetViewport(uint64 guid, bool movable);
+        void Possess(Unit *target);
+        void RemovePossess(bool attack = true); 
+        WorldObject* GetFarsightTarget() const;
+        void ClearFarsight();
+        void RemoveFarsightTarget();
+        void SetFarsightTarget(WorldObject* target);
+        // Controls if vision is currently on farsight object, updated in FAR_SIGHT opcode
+        void SetFarsightVision(bool apply) { m_farsightVision = apply; }
+        bool HasFarsightVision() const { return m_farsightVision; }
 
         bool TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options = 0);
 
@@ -1109,7 +1124,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetWeaponProficiency() const { return m_WeaponProficiency; }
         uint32 GetArmorProficiency() const { return m_ArmorProficiency; }
         bool IsInFeralForm() const { return m_form == FORM_CAT || m_form == FORM_BEAR || m_form == FORM_DIREBEAR; }
-        bool IsUseEquipedWeapon( bool mainhand ) const
+        bool IsUseEquippedWeapon( bool mainhand ) const
         {
             // disarm applied only to mainhand weapon
             return !IsInFeralForm() && (!mainhand || !HasFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISARMED) );
@@ -1291,7 +1306,7 @@ class MANGOS_DLL_SPEC Player : public Unit
             if(d < 0)
                 SetMoney (GetMoney() > uint32(-d) ? GetMoney() + d : 0);
             else
-                SetMoney (GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
+                SetMoney (GetMoney() < MAX_MONEY_AMOUNT - d ? GetMoney() + d : MAX_MONEY_AMOUNT);
 
             // "At Gold Limit"
             if(GetMoney() >= MAX_MONEY_AMOUNT)
@@ -1413,6 +1428,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         PlayerSpellMap const& GetSpellMap() const { return m_spells; }
         PlayerSpellMap      & GetSpellMap()       { return m_spells; }
+        ActionButtonList const& GetActionButtonList() const { return m_actionButtons; }
 
         void AddSpellMod(SpellModifier* mod, bool apply);
         int32 GetTotalFlatMods(uint32 spellId, SpellModOp op);
@@ -1502,8 +1518,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void RemoveFromGroup() { RemoveFromGroup(GetGroup(),GetGUID()); }
         void SendUpdateToOutOfRangeGroupMembers();
 
-        void SetInGuild(uint32 GuildId) { SetUInt32Value(PLAYER_GUILDID, GuildId); Player::SetUInt32ValueInDB(PLAYER_GUILDID, GuildId, GetGUID()); }
-        void SetRank(uint32 rankId){ SetUInt32Value(PLAYER_GUILDRANK, rankId); Player::SetUInt32ValueInDB(PLAYER_GUILDRANK, rankId, GetGUID()); }
+        void SetInGuild(uint32 GuildId) { SetUInt32Value(PLAYER_GUILDID, GuildId); Player::SetUInt32ValueInDB(PLAYER_GUILDID, GuildId, this->GetGUID()); }
+        void SetRank(uint32 rankId){ SetUInt32Value(PLAYER_GUILDRANK, rankId); Player::SetUInt32ValueInDB(PLAYER_GUILDRANK, rankId, this->GetGUID()); }
         void SetGuildIdInvited(uint32 GuildId) { m_GuildIdInvited = GuildId; }
         uint32 GetGuildId() { return GetUInt32Value(PLAYER_GUILDID);  }
         static uint32 GetGuildIdFromDB(uint64 guid);
@@ -1516,7 +1532,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SetInArenaTeam(uint32 ArenaTeamId, uint8 slot)
         {
             SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (slot * 6), ArenaTeamId);
-            SetUInt32ValueInDB(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (slot * 6), ArenaTeamId, GetGUID());
+            SetUInt32ValueInDB(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (slot * 6), ArenaTeamId, this->GetGUID());
         }
         uint32 GetArenaTeamId(uint8 slot) { return GetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (slot * 6)); }
         static uint32 GetArenaTeamIdFromDB(uint64 guid, uint8 slot);
@@ -1592,7 +1608,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SendDelayResponse(const uint32);
         void SendLogXPGain(uint32 GivenXP,Unit* victim,uint32 RestXP);
 
-        //Low Level Packets
+		//Low Level Packets
         void PlaySound(uint32 Sound, bool OnlySelf);
         //notifiers
         void SendAttackSwingCantAttack();
@@ -1613,10 +1629,9 @@ class MANGOS_DLL_SPEC Player : public Unit
         bool SetPosition(float x, float y, float z, float orientation, bool teleport = false);
         void UpdateUnderwaterState( Map * m, float x, float y, float z );
 
-        void SendMessageToSet(WorldPacket *data, bool self);// overwrite Object::SendMessageToSet
-        void SendMessageToSetInRange(WorldPacket *data, float fist, bool self);
-                                                            // overwrite Object::SendMessageToSetInRange
-        void SendMessageToSetInRange(WorldPacket *data, float dist, bool self, bool own_team_only);
+        void SendMessageToSet(WorldPacket *data, bool self, bool to_possessor = true);// overwrite Object::SendMessageToSet
+        void SendMessageToSetInRange(WorldPacket *data, float fist, bool self, bool to_possessor = true);// overwrite Object::SendMessageToSetInRange
+        void SendMessageToSetInRange(WorldPacket *data, float dist, bool self, bool to_possessor, bool own_team_only);
 
         static void DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmChars = true);
 
@@ -1625,7 +1640,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void CreateCorpse();
         void KillPlayer();
         uint32 GetResurrectionSpellId();
-        void ResurrectPlayer(float restore_percent, bool applySickness = false);
+        void ResurrectPlayer(float restore_percent, bool updateToWorld = true, bool applySickness = false);
         void BuildPlayerRepop();
         void RepopAtGraveyard();
 
@@ -1721,7 +1736,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         /*********************************************************/
         void UpdateArenaFields();
         void UpdateHonorFields();
-        bool RewardHonor(Unit *pVictim, uint32 groupsize, float honor = -1);
+        bool RewardHonor(Unit *pVictim, uint32 groupsize, float honor = -1, bool pvptoken = false);
         uint32 GetHonorPoints() { return GetUInt32Value(PLAYER_FIELD_HONOR_CURRENCY); }
         uint32 GetArenaPoints() { return GetUInt32Value(PLAYER_FIELD_ARENA_CURRENCY); }
         void ModifyHonorPoints( int32 value );
@@ -1744,19 +1759,17 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SetCanParry(bool value);
         bool CanBlock() const { return m_canBlock; }
         void SetCanBlock(bool value);
-        bool CanDualWield() const { return m_canDualWield; }
-        void SetCanDualWield(bool value) { m_canDualWield = value; }
 
         void SetRegularAttackTime();
         void SetBaseModValue(BaseModGroup modGroup, BaseModType modType, float value) { m_auraBaseMod[modGroup][modType] = value; }
-        void HandleBaseModValue(BaseModGroup modGroup, BaseModType modType, float amount, bool apply);
+        void HandleBaseModValue(BaseModGroup modGroup, BaseModType modType, float amount, bool apply, bool affectStats = true);
         float GetBaseModValue(BaseModGroup modGroup, BaseModType modType) const;
         float GetTotalBaseModValue(BaseModGroup modGroup) const;
         float GetTotalPercentageModValue(BaseModGroup modGroup) const { return m_auraBaseMod[modGroup][FLAT_MOD] + m_auraBaseMod[modGroup][PCT_MOD]; }
         void _ApplyAllStatBonuses();
         void _RemoveAllStatBonuses();
 
-        void _ApplyWeaponDependentAuraMods(Item *item, WeaponAttackType attackType, bool apply);
+        void _ApplyWeaponDependentAuraMods(Item *item,WeaponAttackType attackType,bool apply);
         void _ApplyWeaponDependentAuraCritMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply);
         void _ApplyWeaponDependentAuraDamageMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply);
 
@@ -1775,7 +1788,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateEquipSpellsAtFormChange();
         void CastItemCombatSpell(Item *item,Unit* Target, WeaponAttackType attType);
 
-        void SendInitWorldStates();
+        void SendInitWorldStates(bool force = false, uint32 forceZoneId = 0);
         void SendUpdateWorldState(uint32 Field, uint32 Value);
         void SendDirectMessage(WorldPacket *data);
 
@@ -1802,24 +1815,32 @@ class MANGOS_DLL_SPEC Player : public Unit
         static uint32 GetMaxLevelForBattleGroundQueueId(uint32 queue_id);
         uint32 GetBattleGroundQueueIdFromLevel() const;
 
-        uint32 GetBattleGroundQueueId(uint32 index) const { return m_bgBattleGroundQueueID[index].bgType; }
-        uint32 GetBattleGroundQueueIndex(uint32 bgType) const
+        bool InBattleGroundQueue() const
         {
             for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
-                if (m_bgBattleGroundQueueID[i].bgType == bgType)
+                if (m_bgBattleGroundQueueID[i].bgQueueType != 0)
+                    return true;
+            return false;
+        }
+
+        uint32 GetBattleGroundQueueId(uint32 index) const { return m_bgBattleGroundQueueID[index].bgQueueType; }
+        uint32 GetBattleGroundQueueIndex(uint32 bgQueueType) const
+        {
+            for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
+                if (m_bgBattleGroundQueueID[i].bgQueueType == bgQueueType)
                     return i;
             return PLAYER_MAX_BATTLEGROUND_QUEUES;
         }
-        bool IsInvitedForBattleGroundType(uint32 bgType) const
+        bool IsInvitedForBattleGroundQueueType(uint32 bgQueueType) const
         {
             for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
-                if (m_bgBattleGroundQueueID[i].bgType == bgType)
-                    return m_bgBattleGroundQueueID[i].invited;
+                if (m_bgBattleGroundQueueID[i].bgQueueType == bgQueueType)
+                    return m_bgBattleGroundQueueID[i].invitedToInstance != 0;
             return PLAYER_MAX_BATTLEGROUND_QUEUES;
         }
-        bool InBattleGroundQueueForBattleGroundType(uint32 bgType) const
+        bool InBattleGroundQueueForBattleGroundQueueType(uint32 bgQueueType) const
         {
-            return GetBattleGroundQueueIndex(bgType) < PLAYER_MAX_BATTLEGROUND_QUEUES;
+            return GetBattleGroundQueueIndex(bgQueueType) < PLAYER_MAX_BATTLEGROUND_QUEUES;
         }
 
         void SetBattleGroundId(uint32 val)  { m_bgBattleGroundID = val; }
@@ -1827,34 +1848,47 @@ class MANGOS_DLL_SPEC Player : public Unit
         {
             for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
             {
-                if (m_bgBattleGroundQueueID[i].bgType == 0 || m_bgBattleGroundQueueID[i].bgType == val)
+                if (m_bgBattleGroundQueueID[i].bgQueueType == 0 || m_bgBattleGroundQueueID[i].bgQueueType == val)
                 {
-                    m_bgBattleGroundQueueID[i].bgType = val;
-                    m_bgBattleGroundQueueID[i].invited = false;
+                    m_bgBattleGroundQueueID[i].bgQueueType = val;
+                    m_bgBattleGroundQueueID[i].invitedToInstance = 0;
                     return i;
                 }
             }
             return PLAYER_MAX_BATTLEGROUND_QUEUES;
         }
+        bool HasFreeBattleGroundQueueId()
+        {
+            for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
+                if (m_bgBattleGroundQueueID[i].bgQueueType == 0)
+                    return true;
+            return false;
+        }
         void RemoveBattleGroundQueueId(uint32 val)
         {
             for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
             {
-                if (m_bgBattleGroundQueueID[i].bgType == val)
+                if (m_bgBattleGroundQueueID[i].bgQueueType == val)
                 {
-                    m_bgBattleGroundQueueID[i].bgType = 0;
-                    m_bgBattleGroundQueueID[i].invited = false;
+                    m_bgBattleGroundQueueID[i].bgQueueType = 0;
+                    m_bgBattleGroundQueueID[i].invitedToInstance = 0;
                     return;
                 }
             }
         }
-        void SetInviteForBattleGroundType(uint32 bgType)
+        void SetInviteForBattleGroundQueueType(uint32 bgQueueType, uint32 instanceId)
         {
             for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
-                if (m_bgBattleGroundQueueID[i].bgType == bgType)
-                    m_bgBattleGroundQueueID[i].invited = true;
+                if (m_bgBattleGroundQueueID[i].bgQueueType == bgQueueType)
+                    m_bgBattleGroundQueueID[i].invitedToInstance = instanceId;
         }
-
+        bool IsInvitedForBattleGroundInstance(uint32 instanceId) const
+        {
+            for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
+                if (m_bgBattleGroundQueueID[i].invitedToInstance == instanceId)
+                    return true;
+            return false;
+        }
         uint32 GetBattleGroundEntryPointMap() const { return m_bgEntryPointMap; }
         float GetBattleGroundEntryPointX() const { return m_bgEntryPointX; }
         float GetBattleGroundEntryPointY() const { return m_bgEntryPointY; }
@@ -1880,6 +1914,15 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         bool GetBGAccessByLevel(uint32 bgTypeId) const;
         bool isAllowUseBattleGroundObject();
+        bool isTotalImmunity();
+
+        /*********************************************************/
+        /***               OUTDOOR PVP SYSTEM                  ***/
+        /*********************************************************/
+
+        OutdoorPvP * GetOutdoorPvP() const;
+        // returns true if the player is in active state for outdoor pvp objective capturing, false otherwise
+        bool IsOutdoorPvPActive();
 
         /*********************************************************/
         /***                    REST SYSTEM                    ***/
@@ -1891,10 +1934,10 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SetRestTime(uint32 v) { m_restTime = v;};
 
         /*********************************************************/
-        /***              ENVIROMENTAL SYSTEM                  ***/
+        /***              ENVIRONMENTAL SYSTEM                  ***/
         /*********************************************************/
 
-        void EnvironmentalDamage(uint64 guid, EnviromentalDamage type, uint32 damage);
+        void EnvironmentalDamage(uint64 guid, EnvironmentalDamageType type, uint32 damage);
 
         /*********************************************************/
         /***               FLOOD FILTER SYSTEM                 ***/
@@ -1915,6 +1958,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         bool IsFlying() const { return HasUnitMovementFlag(MOVEMENTFLAG_FLYING); }
 
         void HandleDrowning();
+        void HandleFallDamage(MovementInfo& movementInfo);
+        void HandleFallUnderMap();
 
         void SetClientControl(Unit* target, uint8 allowMove);
 
@@ -1950,9 +1995,10 @@ class MANGOS_DLL_SPEC Player : public Unit
         typedef std::set<uint64> ClientGUIDs;
         ClientGUIDs m_clientGUIDs;
 
-        bool HaveAtClient(WorldObject const* u) { return u==this || m_clientGUIDs.find(u->GetGUID())!=m_clientGUIDs.end(); }
+        bool HaveAtClient(WorldObject const* u) const { return u==this || m_clientGUIDs.find(u->GetGUID())!=m_clientGUIDs.end(); }
 
-        bool IsVisibleInGridForPlayer(Player* pl) const;
+        bool canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList) const;
+        bool IsVisibleInGridForPlayer(Player const* pl) const;
         bool IsVisibleGloballyFor(Player* pl) const;
 
         void UpdateVisibilityOf(WorldObject* target);
@@ -2016,8 +2062,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         Player* GetNextRandomRaidMember(float radius);
 
         GridReference<Player> &GetGridRef() { return m_gridRef; }
-        MapReference &GetMapRef() { return m_mapRef; }
-
         bool isAllowedToLoot(Creature* creature);
 
         WorldLocation& GetTeleportDest() { return m_teleport_dest; }
@@ -2037,8 +2081,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         */
         struct BgBattleGroundQueueID_Rec
         {
-            uint32 bgType;
-            bool   invited;
+            uint32 bgQueueType;
+            uint32 invitedToInstance;
         };
         BgBattleGroundQueueID_Rec m_bgBattleGroundQueueID[PLAYER_MAX_BATTLEGROUND_QUEUES];
         uint32 m_bgEntryPointMap;
@@ -2052,7 +2096,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         time_t m_bgAfkReportedTimer;
         uint32 m_contestedPvPTimer;
 
-        uint32 m_bgTeam;                                    // what side the player will be added to
+        uint32 m_bgTeam;    // what side the player will be added to
 
         /*********************************************************/
         /***                    QUEST SYSTEM                   ***/
@@ -2207,7 +2251,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 m_ArmorProficiency;
         bool m_canParry;
         bool m_canBlock;
-        bool m_canDualWield;
         uint8 m_swingErrorMsg;
         float m_ammoDPS;
         ////////////////////Rest System/////////////////////
@@ -2253,6 +2296,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         // Far Teleport
         WorldLocation m_teleport_dest;
 
+        bool m_farsightVision;
+
         DeclinedName *m_declinedname;
     private:
         // internal common parts for CanStore/StoreItem functions
@@ -2262,7 +2307,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         Item* _StoreItem( uint16 pos, Item *pItem, uint32 count, bool clone, bool update );
 
         GridReference<Player> m_gridRef;
-        MapReference m_mapRef;
 };
 
 void AddItemsSetItem(Player*player,Item *item);

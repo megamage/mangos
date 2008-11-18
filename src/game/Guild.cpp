@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Database/DatabaseEnv.h"
@@ -69,7 +71,13 @@ bool Guild::create(uint64 lGuid, std::string gname)
     guildbank_money = 0;
     purchased_tabs = 0;
 
-    Id = objmgr.GenerateGuildId();
+    QueryResult *result = CharacterDatabase.Query( "SELECT MAX(guildid) FROM guild" );
+    if( result )
+    {
+        Id = (*result)[0].GetUInt32()+1;
+        delete result;
+    }
+    else Id = 1;
 
     // gname already assigned to Guild::name, use it to encode string for DB
     CharacterDatabase.escape_string(gname);
@@ -108,12 +116,12 @@ bool Guild::AddMember(uint64 plGuid, uint32 plRank)
     if(pl)
     {
         if(pl->GetGuildId() != 0)
-            return false;
+        return false;
     }
     else
     {
         if(Player::GetGuildIdFromDB(plGuid) != 0)           // player already in guild
-            return false;
+        return false;
     }
 
     // remove all player signs from another petitions
@@ -363,6 +371,21 @@ bool Guild::FillPlayerData(uint64 guid, MemberSlot* memslot)
     }
     else
     {
+		PCachePlayerInfo pInfo = objmgr.GetPlayerInfoFromCache(GUID_LOPART(guid));
+        if(pInfo)
+        {
+            plName = pInfo->sPlayerName;
+            plClass = pInfo->unClass;
+            if(plClass<CLASS_WARRIOR||plClass>=MAX_CLASSES)     // can be at broken `class` field
+            {
+                sLog.outError("Player (GUID: %u) has a broken data in field `characters`.`class`.",GUID_LOPART(guid));
+                return false;
+            }
+            plLevel = pInfo->unLevel;
+            plZone = Player::GetZoneIdFromDB(guid);
+        }
+        else
+        {
         if(!objmgr.GetPlayerNameByGUID(guid, plName))       // player doesn't exist
             return false;
 
@@ -386,6 +409,7 @@ bool Guild::FillPlayerData(uint64 guid, MemberSlot* memslot)
 
         delete result;
     }
+	}
 
     memslot->name = plName;
     memslot->level = plLevel;
@@ -412,16 +436,18 @@ void Guild::LoadPlayerStatsByGuid(uint64 guid)
 void Guild::SetLeader(uint64 guid)
 {
     leaderGuid = guid;
-    ChangeRank(guid, GR_GUILDMASTER);
+    this->ChangeRank(guid, GR_GUILDMASTER);
 
     CharacterDatabase.PExecute("UPDATE guild SET leaderguid='%u' WHERE guildid='%u'", GUID_LOPART(guid), Id);
 }
 
 void Guild::DelMember(uint64 guid, bool isDisbanding)
 {
-    if(leaderGuid == guid && !isDisbanding)
+    if(this->leaderGuid == guid && !isDisbanding)
     {
-        QueryResult *result = CharacterDatabase.PQuery("SELECT guid FROM guild_member WHERE guildid='%u' AND guid != '%u' ORDER BY rank ASC LIMIT 1", Id, GUID_LOPART(leaderGuid));
+        std::ostringstream ss;
+        ss<<"SELECT guid FROM guild_member WHERE guildid='"<<Id<<"' AND guid!='"<<this->leaderGuid<<"' ORDER BY rank ASC LIMIT 1";
+        QueryResult *result = CharacterDatabase.Query( ss.str().c_str() );
         if( result )
         {
             uint64 newLeaderGUID;
@@ -431,7 +457,7 @@ void Guild::DelMember(uint64 guid, bool isDisbanding)
             newLeaderGUID = (*result)[0].GetUInt64();
             delete result;
 
-            SetLeader(newLeaderGUID);
+            this->SetLeader(newLeaderGUID);
 
             newLeader = objmgr.GetPlayer(newLeaderGUID);
             if(newLeader)
@@ -453,20 +479,20 @@ void Guild::DelMember(uint64 guid, bool isDisbanding)
                 data << (uint8)2;
                 data << oldLeaderName;
                 data << newLeaderName;
-                BroadcastPacket(&data);
+                this->BroadcastPacket(&data);
 
                 data.Initialize(SMSG_GUILD_EVENT, (1+1+oldLeaderName.size()+1));
                 data << (uint8)GE_LEFT;
                 data << (uint8)1;
                 data << oldLeaderName;
-                BroadcastPacket(&data);
+                this->BroadcastPacket(&data);
             }
 
             sLog.outDebug( "WORLD: Sent (SMSG_GUILD_EVENT)" );
         }
         else
         {
-            Disband();
+            this->Disband();
             return;
         }
     }
@@ -663,7 +689,7 @@ int32 Guild::GetRank(uint32 LowGuid)
     MemberList::iterator itr = members.find(LowGuid);
     if (itr==members.end())
         return -1;
-
+        
     return itr->second.RankId;
 }
 
@@ -671,7 +697,7 @@ void Guild::Disband()
 {
     WorldPacket data(SMSG_GUILD_EVENT, 1);
     data << (uint8)GE_DISBANDED;
-    BroadcastPacket(&data);
+    this->BroadcastPacket(&data);
 
     while (!members.empty())
     {
@@ -771,11 +797,11 @@ void Guild::Query(WorldSession *session)
 
 void Guild::SetEmblem(uint32 emblemStyle, uint32 emblemColor, uint32 borderStyle, uint32 borderColor, uint32 backgroundColor)
 {
-    EmblemStyle = emblemStyle;
-    EmblemColor = emblemColor;
-    BorderStyle = borderStyle;
-    BorderColor = borderColor;
-    BackgroundColor = backgroundColor;
+    this->EmblemStyle = emblemStyle;
+    this->EmblemColor = emblemColor;
+    this->BorderStyle = borderStyle;
+    this->BorderColor = borderColor;
+    this->BackgroundColor = backgroundColor;
 
     CharacterDatabase.PExecute("UPDATE guild SET EmblemStyle=%u, EmblemColor=%u, BorderStyle=%u, BorderColor=%u, BackgroundColor=%u WHERE guildid = %u", EmblemStyle, EmblemColor, BorderStyle, BorderColor, BackgroundColor, Id);
 }
@@ -959,10 +985,15 @@ void Guild::DisplayGuildBankMoneyUpdate()
     WorldPacket data(SMSG_GUILD_BANK_LIST, 8+1+4+1+1);
 
     data << uint64(GetGuildBankMoney());
-    data << uint8(0);                                       // TabId, default 0
-    data << uint32(0);                                      // slot withdrow, default 0
+    data << uint8(0);
+    // remaining slots for today
+
+    size_t rempos = data.wpos();
+    data << uint32(0);                                      // will be filled later
     data << uint8(0);                                       // Tell client this is a tab content packet
+
     data << uint8(0);                                       // not send items
+
     BroadcastPacket(&data);
 
     sLog.outDebug("WORLD: Sent (SMSG_GUILD_BANK_LIST)");
@@ -1897,7 +1928,7 @@ uint8 Guild::CanStoreItem( uint8 tab, uint8 slot, GuildItemPosCountVec &dest, ui
             return EQUIP_ERR_OK;
     }
 
-    // not specific slot or have spece for partly store only in specific slot
+    // not specific slot or have space for partly store only in specific slot
 
     // search stack in tab for merge to
     if( pItem->GetMaxStackCount() > 1 )
@@ -1959,8 +1990,9 @@ void Guild::SendGuildBankTabText(WorldSession *session, uint8 TabId)
 bool GuildItemPosCount::isContainedIn(GuildItemPosCountVec const &vec) const
 {
     for(GuildItemPosCountVec::const_iterator itr = vec.begin(); itr != vec.end();++itr)
-        if(itr->slot == slot)
+        if(itr->slot == this->slot)
             return true;
 
     return false;
 }
+

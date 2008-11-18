@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -40,8 +42,6 @@
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
-
-#include "ObjectPosSelector.h"
 
 #include "TemporarySummon.h"
 
@@ -266,6 +266,8 @@ void Object::_BuildMovementUpdate(ByteBuffer * data, uint8 flags, uint32 flags2 
             case TYPEID_UNIT:
             {
                 flags2 = ((Unit*)this)->GetUnitMovementFlags();
+                flags2 &= ~MOVEMENTFLAG_ONTRANSPORT;
+                flags2 &= ~MOVEMENTFLAG_SPLINE2;
             }
             break;
             case TYPEID_PLAYER:
@@ -329,7 +331,7 @@ void Object::_BuildMovementUpdate(ByteBuffer * data, uint8 flags, uint32 flags2 
                 *data << (float)((Player*)this)->GetTransOffsetO();
                 *data << (uint32)((Player*)this)->GetTransTime();
             }
-            //MaNGOS currently not have support for other than player on transport
+            //TrinIty currently not have support for other than player on transport
         }
 
         // 0x02200000
@@ -540,6 +542,8 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
                 IsActivateToQuest = true;
                 updateMask->SetBit(GAMEOBJECT_DYN_FLAGS);
             }
+            if (GetUInt32Value(GAMEOBJECT_ARTKIT))
+                updateMask->SetBit(GAMEOBJECT_ARTKIT);
         }
     }
     else                                                    //case UPDATETYPE_VALUES
@@ -568,8 +572,9 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
             if( updateMask->GetBit( index ) )
             {
                 // remove custom flag before send
+
                 if( index == UNIT_NPC_FLAGS )
-                    *data << uint32(m_uint32Values[ index ] & ~UNIT_NPC_FLAG_GUARD);
+                    *data << uint32(m_uint32Values[ index ] & ~(UNIT_NPC_FLAG_GUARD + UNIT_NPC_FLAG_OUTDOORPVP));
                 // FIXME: Some values at server stored in float format but must be sent to client in uint32 format
                 else if(index >= UNIT_FIELD_BASEATTACKTIME && index <= UNIT_FIELD_RANGEDATTACKTIME)
                 {
@@ -588,6 +593,30 @@ void Object::_BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask 
                 else if(index == UNIT_FIELD_FLAGS && target->isGameMaster())
                 {
                     *data << (m_uint32Values[ index ] & ~UNIT_FLAG_NOT_SELECTABLE);
+                }
+                // use modelid_a if not gm, _h if gm for CREATURE_FLAG_EXTRA_TRIGGER creatures
+                else if(index == UNIT_FIELD_DISPLAYID && GetTypeId() == TYPEID_UNIT)
+                {
+                    const CreatureInfo* cinfo = ((Creature*)this)->GetCreatureInfo();
+                    if(cinfo->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER)
+                    {
+                        if(target->isGameMaster())
+                        {
+                            if(cinfo->Modelid2)
+                                *data << cinfo->Modelid1;
+                            else
+                                *data << 17519; // world invisible trigger's model
+                        }
+                        else
+                        {
+                            if(cinfo->Modelid2)
+                                *data << cinfo->Modelid2;
+                            else
+                                *data << 11686; // world invisible trigger's model
+                        }
+                    }
+                    else
+                        *data << m_uint32Values[ index ];
                 }
                 // hide lootable animation for unallowed players
                 else if(index == UNIT_DYNAMIC_FLAGS && GetTypeId() == TYPEID_UNIT)
@@ -955,6 +984,43 @@ WorldObject::WorldObject()
     m_name = "";
 
     mSemaphoreTeleport  = false;
+
+    m_isActive          = false;
+}
+
+WorldObject::~WorldObject()
+{
+    if(m_isActive && IsInWorld())
+        ObjectAccessor::Instance().RemoveActiveObject(this);
+}
+
+void WorldObject::setActive(bool isActive)
+{
+    // if already in the same activity state as we try to set, do nothing
+    if(isActive == m_isActive)
+        return;
+    m_isActive = isActive;
+    if(IsInWorld())
+    {
+        if(isActive)
+            ObjectAccessor::Instance().AddActiveObject(this);
+        else
+            ObjectAccessor::Instance().RemoveActiveObject(this);
+    }
+}
+
+void WorldObject::AddToWorld()
+{
+    Object::AddToWorld();
+    if(m_isActive)
+        ObjectAccessor::Instance().AddActiveObject(this);
+}
+
+void WorldObject::RemoveFromWorld()
+{
+    if(m_isActive)
+        ObjectAccessor::Instance().RemoveActiveObject(this);
+    Object::RemoveFromWorld();
 }
 
 void WorldObject::_Create( uint32 guidlow, HighGuid guidhigh, uint32 mapid )
@@ -976,7 +1042,7 @@ uint32 WorldObject::GetAreaId() const
 
 InstanceData* WorldObject::GetInstanceData()
 {
-    Map *map = GetMap();
+    Map *map = MapManager::Instance().GetMap(m_mapId, this);
     return map->IsDungeon() ? ((InstanceMap*)map)->GetInstanceData() : NULL;
 }
 
@@ -1116,8 +1182,8 @@ void WorldObject::GetRandomPoint( float x, float y, float z, float distance, flo
     rand_y = y + new_dist * sin(angle);
     rand_z = z;
 
-    MaNGOS::NormalizeMapCoord(rand_x);
-    MaNGOS::NormalizeMapCoord(rand_y);
+    Trinity::NormalizeMapCoord(rand_x);
+    Trinity::NormalizeMapCoord(rand_y);
     UpdateGroundPositionZ(rand_x,rand_y,rand_z);            // update to LOS height if available
 }
 
@@ -1130,7 +1196,7 @@ void WorldObject::UpdateGroundPositionZ(float x, float y, float &z) const
 
 bool WorldObject::IsPositionValid() const
 {
-    return MaNGOS::IsValidMapCoord(m_positionX,m_positionY,m_positionZ,m_orientation);
+    return Trinity::IsValidMapCoord(m_positionX,m_positionY,m_positionZ,m_orientation);
 }
 
 void WorldObject::MonsterSay(const char* text, uint32 language, uint64 TargetGuid)
@@ -1166,13 +1232,23 @@ void WorldObject::MonsterWhisper(const char* text, uint64 receiver, bool IsBossW
     player->GetSession()->SendPacket(&data);
 }
 
-namespace MaNGOS
+void WorldObject::SendPlaySound(uint32 Sound, bool OnlySelf)
+{
+    WorldPacket data(SMSG_PLAY_SOUND, 4);
+    data << Sound;
+    if (OnlySelf && GetTypeId() == TYPEID_PLAYER )
+        ((Player*)this)->GetSession()->SendPacket( &data );
+    else
+        SendMessageToSet( &data, true ); // ToSelf ignored in this case
+}
+
+namespace Trinity
 {
     class MessageChatLocaleCacheDo
     {
         public:
             MessageChatLocaleCacheDo(WorldObject const& obj, ChatMsg msgtype, int32 textId, uint32 language, uint64 targetGUID, float dist)
-                : i_object(obj), i_msgtype(msgtype), i_textId(textId), i_language(language),
+                : i_object(obj), i_msgtype(msgtype), i_textId(textId), i_language(language), 
                 i_targetGUID(targetGUID), i_dist(dist)
             {
             }
@@ -1199,7 +1275,7 @@ namespace MaNGOS
                     if(i_data_cache.size() < cache_idx+1)
                         i_data_cache.resize(cache_idx+1);
 
-                    char const* text = objmgr.GetMangosString(i_textId,loc_idx);
+                    char const* text = objmgr.GetTrinityString(i_textId,loc_idx);
 
                     data = new WorldPacket(SMSG_MESSAGECHAT, 200);
 
@@ -1223,49 +1299,49 @@ namespace MaNGOS
             float i_dist;
             std::vector<WorldPacket*> i_data_cache;             // 0 = default, i => i-1 locale index
     };
-}                                                           // namespace MaNGOS
+}                                                           // namespace Trinity
 
 void WorldObject::MonsterSay(int32 textId, uint32 language, uint64 TargetGuid)
 {
-    CellPair p = MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(GetPositionX(), GetPositionY());
 
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
     cell.SetNoCreate();
 
-    MaNGOS::MessageChatLocaleCacheDo say_do(*this, CHAT_MSG_MONSTER_SAY, textId,language,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_SAY));
-    MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo> say_worker(say_do);
-    TypeContainerVisitor<MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
+    Trinity::MessageChatLocaleCacheDo say_do(*this, CHAT_MSG_MONSTER_SAY, textId,language,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_SAY));
+    Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo> say_worker(say_do);
+    TypeContainerVisitor<Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
     CellLock<GridReadGuard> cell_lock(cell, p);
     cell_lock->Visit(cell_lock, message, *GetMap());
 }
 
 void WorldObject::MonsterYell(int32 textId, uint32 language, uint64 TargetGuid)
 {
-    CellPair p = MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(GetPositionX(), GetPositionY());
 
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
     cell.SetNoCreate();
 
-    MaNGOS::MessageChatLocaleCacheDo say_do(*this, CHAT_MSG_MONSTER_YELL, textId,language,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_YELL));
-    MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo> say_worker(say_do);
-    TypeContainerVisitor<MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
+    Trinity::MessageChatLocaleCacheDo say_do(*this, CHAT_MSG_MONSTER_YELL, textId,language,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_YELL));
+    Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo> say_worker(say_do);
+    TypeContainerVisitor<Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
     CellLock<GridReadGuard> cell_lock(cell, p);
     cell_lock->Visit(cell_lock, message, *GetMap());
 }
 
 void WorldObject::MonsterTextEmote(int32 textId, uint64 TargetGuid, bool IsBossEmote)
 {
-    CellPair p = MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY());
+    CellPair p = Trinity::ComputeCellPair(GetPositionX(), GetPositionY());
 
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
     cell.SetNoCreate();
 
-    MaNGOS::MessageChatLocaleCacheDo say_do(*this, IsBossEmote ? CHAT_MSG_RAID_BOSS_EMOTE : CHAT_MSG_MONSTER_EMOTE, textId,LANG_UNIVERSAL,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE));
-    MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo> say_worker(say_do);
-    TypeContainerVisitor<MaNGOS::PlayerWorker<MaNGOS::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
+    Trinity::MessageChatLocaleCacheDo say_do(*this, IsBossEmote ? CHAT_MSG_RAID_BOSS_EMOTE : CHAT_MSG_MONSTER_EMOTE, textId,LANG_UNIVERSAL,TargetGuid,sWorld.getConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE));
+    Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo> say_worker(say_do);
+    TypeContainerVisitor<Trinity::PlayerWorker<Trinity::MessageChatLocaleCacheDo>, WorldTypeMapContainer > message(say_worker);
     CellLock<GridReadGuard> cell_lock(cell, p);
     cell_lock->Visit(cell_lock, message, *GetMap());
 }
@@ -1277,7 +1353,7 @@ void WorldObject::MonsterWhisper(int32 textId, uint64 receiver, bool IsBossWhisp
         return;
 
     uint32 loc_idx = player->GetSession()->GetSessionDbLocaleIndex();
-    char const* text = objmgr.GetMangosString(textId,loc_idx);
+    char const* text = objmgr.GetTrinityString(textId,loc_idx);
 
     WorldPacket data(SMSG_MESSAGECHAT, 200);
     BuildMonsterChat(&data,IsBossWhisper ? CHAT_MSG_RAID_BOSS_WHISPER : CHAT_MSG_MONSTER_WHISPER,text,LANG_UNIVERSAL,GetName(),receiver);
@@ -1345,14 +1421,14 @@ void WorldObject::BuildTeleportAckMsg(WorldPacket *data, float x, float y, float
     *data << uint32(0);
 }
 
-void WorldObject::SendMessageToSet(WorldPacket *data, bool /*bToSelf*/)
+void WorldObject::SendMessageToSet(WorldPacket *data, bool /*fake*/, bool bToPossessor)
 {
-    GetMap()->MessageBroadcast(this, data);
+    MapManager::Instance().GetMap(m_mapId, this)->MessageBroadcast(this, data, bToPossessor);
 }
 
-void WorldObject::SendMessageToSetInRange(WorldPacket *data, float dist, bool /*bToSelf*/)
+void WorldObject::SendMessageToSetInRange(WorldPacket *data, float dist, bool /*bToSelf*/, bool bToPossessor)
 {
-    GetMap()->MessageDistBroadcast(this, data, dist);
+    MapManager::Instance().GetMap(m_mapId, this)->MessageDistBroadcast(this, data, dist, bToPossessor);
 }
 
 void WorldObject::SendObjectDeSpawnAnim(uint64 guid)
@@ -1416,216 +1492,57 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     if(GetTypeId()==TYPEID_UNIT && ((Creature*)this)->AI())
         ((Creature*)this)->AI()->JustSummoned(pCreature);
 
+    if(pCreature->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER && pCreature->m_spells[0])
+    {
+        if(GetTypeId() == TYPEID_UNIT || GetTypeId() == TYPEID_PLAYER)
+            pCreature->setFaction(((Unit*)this)->getFaction());
+        pCreature->CastSpell(pCreature, pCreature->m_spells[0], false, 0, 0, GetGUID());
+    }
+
     //return the creature therewith the summoner has access to it
     return pCreature;
 }
 
-namespace MaNGOS
+GameObject* WorldObject::SummonGameObject(uint32 entry, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 respawnTime)
 {
-    class NearUsedPosDo
+    if(!IsInWorld())
+        return NULL;
+    Map * map = GetMap();
+    if(!map)
+        return NULL;
+    GameObjectInfo const* goinfo = objmgr.GetGameObjectInfo(entry);
+    if(!goinfo)
     {
-        public:
-            NearUsedPosDo(WorldObject const& obj, WorldObject const* searcher, float angle, ObjectPosSelector& selector)
-                : i_object(obj), i_searcher(searcher), i_angle(angle), i_selector(selector) {}
+        sLog.outErrorDb("Gameobject template %u not found in database!", entry);
+        return NULL;
+    }
+    GameObject *go = new GameObject();
+    if(!go->Create(objmgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT),entry,map,x,y,z,ang,rotation0,rotation1,rotation2,rotation3,100,1))
+        return NULL;
+    go->SetRespawnTime(respawnTime);
+    if(GetTypeId()==TYPEID_PLAYER || GetTypeId()==TYPEID_UNIT) //not sure how to handle this
+        ((Unit*)this)->AddGameObject(go);
+    else
+        go->SetSpawnedByDefault(false);
+    map->Add(go);
 
-            void operator()(Corpse*) const {}
-            void operator()(DynamicObject*) const {}
-
-            void operator()(Creature* c) const
-            {
-                // skip self or target
-                if(c==i_searcher || c==&i_object)
-                    return;
-
-                float x,y,z;
-
-                if( !c->isAlive() || c->hasUnitState(UNIT_STAT_ROOT | UNIT_STAT_STUNNED | UNIT_STAT_DISTRACTED) ||
-                    !c->GetMotionMaster()->GetDestination(x,y,z) )
-                {
-                    x = c->GetPositionX();
-                    y = c->GetPositionY();
-                }
-
-                add(c,x,y);
-            }
-
-            template<class T>
-                void operator()(T* u) const
-            {
-                // skip self or target
-                if(u==i_searcher || u==&i_object)
-                    return;
-
-                float x,y;
-
-                x = u->GetPositionX();
-                y = u->GetPositionY();
-
-                add(u,x,y);
-            }
-
-            // we must add used pos that can fill places around center
-            void add(WorldObject* u, float x, float y) const
-            {
-                // dist include size of u
-                float dist2d = i_object.GetDistance2d(x,y);
-
-                // u is too nearest to i_object
-                if(dist2d + i_object.GetObjectSize() + u->GetObjectSize() < i_selector.m_dist - i_selector.m_size)
-                    return;
-
-                // u is too far away from i_object
-                if(dist2d + i_object.GetObjectSize() - u->GetObjectSize() > i_selector.m_dist + i_selector.m_size)
-                    return;
-
-                float angle = i_object.GetAngle(u)-i_angle;
-
-                // move angle to range -pi ... +pi
-                while( angle > M_PI)
-                    angle -= 2.0f * M_PI;
-                while(angle < -M_PI)
-                    angle += 2.0f * M_PI;
-
-                i_selector.AddUsedPos(u->GetObjectSize(),angle,dist2d + i_object.GetObjectSize());
-            }
-        private:
-            WorldObject const& i_object;
-            WorldObject const* i_searcher;
-            float              i_angle;
-            ObjectPosSelector& i_selector;
-    };
-}                                                           // namespace MaNGOS
-
-//===================================================================================================
+    return go;
+}
 
 void WorldObject::GetNearPoint2D(float &x, float &y, float distance2d, float absAngle ) const
 {
     x = GetPositionX() + (GetObjectSize() + distance2d) * cos(absAngle);
     y = GetPositionY() + (GetObjectSize() + distance2d) * sin(absAngle);
 
-    MaNGOS::NormalizeMapCoord(x);
-    MaNGOS::NormalizeMapCoord(y);
+    Trinity::NormalizeMapCoord(x);
+    Trinity::NormalizeMapCoord(y);
 }
 
 void WorldObject::GetNearPoint(WorldObject const* searcher, float &x, float &y, float &z, float searcher_size, float distance2d, float absAngle ) const
 {
     GetNearPoint2D(x,y,distance2d+searcher_size,absAngle);
-    z = GetPositionZ();
+    
+	z = GetPositionZ();
 
-    // if detection disabled, return first point
-    if(!sWorld.getConfig(CONFIG_DETECT_POS_COLLISION))
-    {
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-        return;
-    }
-
-    // or remember first point
-    float first_x = x;
-    float first_y = y;
-    bool first_los_conflict = false;                        // first point LOS problems
-
-    // prepare selector for work
-    ObjectPosSelector selector(GetPositionX(),GetPositionY(),GetObjectSize(),distance2d+searcher_size);
-
-    // adding used positions around object
-    {
-        CellPair p(MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY()));
-        Cell cell(p);
-        cell.data.Part.reserved = ALL_DISTRICT;
-        cell.SetNoCreate();
-
-        MaNGOS::NearUsedPosDo u_do(*this,searcher,absAngle,selector);
-        MaNGOS::WorldObjectWorker<MaNGOS::NearUsedPosDo> worker(u_do);
-
-        TypeContainerVisitor<MaNGOS::WorldObjectWorker<MaNGOS::NearUsedPosDo>, GridTypeMapContainer  > grid_obj_worker(worker);
-        TypeContainerVisitor<MaNGOS::WorldObjectWorker<MaNGOS::NearUsedPosDo>, WorldTypeMapContainer > world_obj_worker(worker);
-
-        CellLock<GridReadGuard> cell_lock(cell, p);
-        cell_lock->Visit(cell_lock, grid_obj_worker,  *GetMap());
-        cell_lock->Visit(cell_lock, world_obj_worker, *GetMap());
-    }
-
-    // maybe can just place in primary position
-    if( selector.CheckOriginal() )
-    {
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-
-        if(IsWithinLOS(x,y,z))
-            return;
-
-        first_los_conflict = true;                          // first point have LOS problems
-    }
-
-    float angle;                                            // candidate of angle for free pos
-
-    // special case when one from list empty and then empty side preferred
-    if(selector.FirstAngle(angle))
-    {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
-        z = GetPositionZ();
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-
-        if(IsWithinLOS(x,y,z))
-            return;
-    }
-
-    // set first used pos in lists
-    selector.InitializeAngle();
-
-    // select in positions after current nodes (selection one by one)
-    while(selector.NextAngle(angle))                        // angle for free pos
-    {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
-        z = GetPositionZ();
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-
-        if(IsWithinLOS(x,y,z))
-            return;
-    }
-
-    // BAD NEWS: not free pos (or used or have LOS problems)
-    // Attempt find _used_ pos without LOS problem
-
-    if(!first_los_conflict)
-    {
-        x = first_x;
-        y = first_y;
-
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-        return;
-    }
-
-    // special case when one from list empty and then empty side preferred
-    if( selector.IsNonBalanced() )
-    {
-        if(!selector.FirstAngle(angle))                     // _used_ pos
-        {
-            GetNearPoint2D(x,y,distance2d,absAngle+angle);
-            z = GetPositionZ();
-            UpdateGroundPositionZ(x,y,z);                   // update to LOS height if available
-
-            if(IsWithinLOS(x,y,z))
-                return;
-        }
-    }
-
-    // set first used pos in lists
-    selector.InitializeAngle();
-
-    // select in positions after current nodes (selection one by one)
-    while(selector.NextUsedAngle(angle))                    // angle for used pos but maybe without LOS problem
-    {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
-        z = GetPositionZ();
-        UpdateGroundPositionZ(x,y,z);                       // update to LOS height if available
-
-        if(IsWithinLOS(x,y,z))
-            return;
-    }
-
-    // BAD BAD NEWS: all found pos (free and used) have LOS problem :(
-    x = first_x;
-    y = first_y;
-
-    UpdateGroundPositionZ(x,y,z);                           // update to LOS height if available
+	UpdateGroundPositionZ(x,y,z);
 }

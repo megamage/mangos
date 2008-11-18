@@ -256,7 +256,7 @@ void LoadLocaleMPQFiles(int const locale)
             new MPQArchive(filename);
     }
 }
-
+    
 void LoadCommonMPQFiles()
 {
     char filename[512];
@@ -265,16 +265,13 @@ void LoadCommonMPQFiles()
     new MPQArchive(filename);
     sprintf(filename,"%s/Data/expansion.MPQ",input_path);
     new MPQArchive(filename);
-
     for(int i = 1; i < 5; ++i)
     {
         char ext[3] = "";
         if(i > 1)
             sprintf(ext, "-%i", i);
-
-        sprintf(filename,"%s/Data/patch%s.MPQ",input_path,ext);
-        if(FileExists(filename))
-            new MPQArchive(filename);
+            if(FileExists(filename))
+                new MPQArchive(filename);
     }
 }
 
@@ -292,7 +289,7 @@ int main(int argc, char * arg[])
     HandleArgs(argc, arg);
 
     int FirstLocale = -1;
-
+    
     for (int i = 0; i < LANG_COUNT; i++)
     {
         char tmp1[512];
@@ -300,25 +297,25 @@ int main(int argc, char * arg[])
         if (FileExists(tmp1))
         {
             printf("Detected locale: %s\n", langs[i]);
-
+            
             //Open MPQs
             LoadLocaleMPQFiles(i);
-
+            
             if((extract & EXTRACT_DBC) == 0)
             {
                 FirstLocale=i;
                 break;
             }
 
-            //Extract DBC files
-            if(FirstLocale<0)
-            {
-                ExtractDBCFiles(i, true);
-                FirstLocale = i;
-            }
-            else
-                ExtractDBCFiles(i, false);
-
+        //Extract DBC files
+        if(FirstLocale<0)
+        {
+            ExtractDBCFiles(i, true);
+            FirstLocale = i;
+        }
+        else 
+            ExtractDBCFiles(i, false);
+        
             //Close MPQs
             CloseMPQFiles();
         }
@@ -329,15 +326,15 @@ int main(int argc, char * arg[])
         printf("No locales detected\n");
         return 0;
     }
-
+    
     if (extract & EXTRACT_MAP)
     {
         printf("Using locale: %s\n", langs[FirstLocale]);
-
+        
         // Open MPQs
         LoadLocaleMPQFiles(FirstLocale);
         LoadCommonMPQFiles();
-
+        
         // Extract maps
         ExtractMapsFromMpq();
 

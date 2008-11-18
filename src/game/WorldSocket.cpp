@@ -1,20 +1,22 @@
-/*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* 
+* Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+*
+* Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+*/
 
 #include <ace/Message_Block.h>
 #include <ace/OS_NS_string.h>
@@ -467,7 +469,7 @@ int WorldSocket::handle_input_missing_data (void)
 
             if (m_Header.space () > 0)
             {
-                // Couldn't receive the whole header this time.
+                // Couldn't receive the whole header this time
                 ACE_ASSERT (message_block.length () == 0);
                 errno = EWOULDBLOCK;
                 return -1;
@@ -501,7 +503,7 @@ int WorldSocket::handle_input_missing_data (void)
 
             if (m_RecvPct.space () > 0)
             {
-                // Couldn't receive the whole data this time.
+                //couldn't receive the whole data this time
                 ACE_ASSERT (message_block.length () == 0);
                 errno = EWOULDBLOCK;
                 return -1;
@@ -570,7 +572,7 @@ int WorldSocket::ProcessIncoming (WorldPacket* new_pct)
     if (closing_)
         return -1;
 
-    // Dump received packet.
+    // Dump received packet
     if (sWorldLog.LogWorld ())
     {
         sWorldLog.Log ("CLIENT:\nSOCKET: %u\nLENGTH: %u\nOPCODE: %s (0x%.4X)\nDATA:\n",
@@ -641,7 +643,7 @@ int WorldSocket::HandleAuthSession (WorldPacket& recvPacket)
     uint32 unk2;
     uint32 BuiltNumberClient;
     uint32 id, security;
-    uint8 expansion = 0;
+    //uint8 expansion = 0;
     LocaleConstant locale;
     std::string account;
     Sha1Hash sha1;
@@ -712,7 +714,10 @@ int WorldSocket::HandleAuthSession (WorldPacket& recvPacket)
 
     Field* fields = result->Fetch ();
 
-    expansion = fields[8].GetUInt8 () && sWorld.getConfig (CONFIG_EXPANSION) > 0;
+    uint8 expansion = fields[8].GetUInt8();
+    uint32 world_expansion = sWorld.getConfig(CONFIG_EXPANSION);
+    if(expansion > world_expansion)
+        expansion = world_expansion;
 
     N.SetHexStr ("894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7");
     g.SetDword (7);
@@ -979,7 +984,7 @@ int WorldSocket::iSendPacket (const WorldPacket& pct)
 
     if (!pct.empty ())
         if (m_OutBuffer->copy ((char*) pct.contents (), pct.size ()) == -1)
-        ACE_ASSERT (false);
+            ACE_ASSERT (false);
 
     return 0;
 }

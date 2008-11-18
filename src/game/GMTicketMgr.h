@@ -114,5 +114,5 @@ class GMTicketMgr
         GMTicketMap m_GMTicketMap;
 };
 
-#define ticketmgr MaNGOS::Singleton<GMTicketMgr>::Instance()
+#define ticketmgr Trinity::Singleton<GMTicketMgr>::Instance()
 #endif

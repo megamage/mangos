@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,16 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOS_MAP_H
-#define MANGOS_MAP_H
+#ifndef TRINITY_MAP_H
+#define TRINITY_MAP_H
 
 #include "Platform/Define.h"
 #include "Policies/ThreadingModel.h"
@@ -31,7 +33,6 @@
 #include "Timer.h"
 #include "SharedDefines.h"
 #include "GameSystem/GridRefManager.h"
-#include "MapRefManager.h"
 
 #include <bitset>
 #include <list>
@@ -54,19 +55,19 @@ template<class MUTEX, class LOCK_TYPE>
 struct RGuard
 {
     RGuard(MUTEX &l) : i_lock(l.getReadLock()) {}
-    MaNGOS::GeneralLock<LOCK_TYPE> i_lock;
+    Trinity::GeneralLock<LOCK_TYPE> i_lock;
 };
 
 template<class MUTEX, class LOCK_TYPE>
 struct WGuard
 {
     WGuard(MUTEX &l) : i_lock(l.getWriteLock()) {}
-    MaNGOS::GeneralLock<LOCK_TYPE> i_lock;
+    Trinity::GeneralLock<LOCK_TYPE> i_lock;
 };
 
 typedef RGuard<GridRWLock, ZThread::Lockable> GridReadGuard;
 typedef WGuard<GridRWLock, ZThread::Lockable> GridWriteGuard;
-typedef MaNGOS::SingleThreaded<GridRWLock>::Lock NullGuard;
+typedef Trinity::SingleThreaded<GridRWLock>::Lock NullGuard;
 
 typedef struct
 {
@@ -103,7 +104,7 @@ struct InstanceTemplate
     float startLocY;
     float startLocZ;
     float startLocO;
-    uint32 script_id;
+    char const* script;
 };
 
 enum LevelRequirementVsMode
@@ -123,9 +124,8 @@ typedef UNORDERED_MAP<Creature*, CreatureMover> CreatureMoveList;
 #define INVALID_HEIGHT       -100000.0f                     // for check, must be equal to VMAP_INVALID_HEIGHT, real value for unknown height is VMAP_INVALID_HEIGHT_VALUE
 #define MIN_UNLOAD_DELAY      1                             // immediate unload
 
-class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::ObjectLevelLockable<Map, ZThread::Mutex>
+class TRINITY_DLL_SPEC Map : public GridRefManager<NGridType>, public Trinity::ObjectLevelLockable<Map, ZThread::Mutex>
 {
-    friend class MapReference;
     public:
         Map(uint32 id, time_t, uint32 InstanceId, uint8 SpawnMode);
         virtual ~Map();
@@ -140,10 +140,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
 
         virtual void Update(const uint32&);
 
-        void MessageBroadcast(Player *, WorldPacket *, bool to_self);
-        void MessageBroadcast(WorldObject *, WorldPacket *);
-        void MessageDistBroadcast(Player *, WorldPacket *, float dist, bool to_self, bool own_team_only = false);
-        void MessageDistBroadcast(WorldObject *, WorldPacket *, float dist);
+        void MessageBroadcast(Player *, WorldPacket *, bool to_self, bool to_possessor);
+        void MessageBroadcast(WorldObject *, WorldPacket *, bool to_possessor);
+        void MessageDistBroadcast(Player *, WorldPacket *, float dist, bool to_self, bool to_possessor, bool own_team_only = false);
+        void MessageDistBroadcast(WorldObject *, WorldPacket *, float dist, bool to_possessor);
 
         void PlayerRelocation(Player *, float x, float y, float z, float angl);
         void CreatureRelocation(Creature *creature, float x, float y, float, float);
@@ -152,7 +152,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
 
         inline bool IsRemovalGrid(float x, float y) const
         {
-            GridPair p = MaNGOS::ComputeGridPair(x, y);
+            GridPair p = Trinity::ComputeGridPair(x, y);
             return( !getNGrid(p.x_coord, p.y_coord) || getNGrid(p.x_coord, p.y_coord)->GetGridState() == GRID_STATE_REMOVAL );
         }
 
@@ -234,15 +234,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         void resetMarkedCells() { marked_cells.reset(); }
         bool isCellMarked(uint32 pCellId) { return marked_cells.test(pCellId); }
         void markCell(uint32 pCellId) { marked_cells.set(pCellId); }
+        Creature* GetCreatureInMap(uint64 guid);
+        GameObject* GetGameObjectInMap(uint64 guid);
 
-        bool HavePlayers() const { return !m_mapRefManager.isEmpty(); }
-        uint32 GetPlayersCountExceptGMs() const;
-        bool PlayersNearGrid(uint32 x,uint32 y) const;
-
-        void SendToPlayers(WorldPacket const* data) const;
-
-        typedef MapRefManager PlayerList;
-        PlayerList const& GetPlayers() const { return m_mapRefManager; }
+        template<class T> void SwitchGridContainers(T* obj, bool active);
     private:
         void LoadVMap(int pX, int pY);
         void LoadMap(uint32 mapid, uint32 instanceid, int x,int y);
@@ -283,7 +278,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         inline void setNGrid(NGridType* grid, uint32 x, uint32 y);
 
     protected:
-        typedef MaNGOS::ObjectLevelLockable<Map, ZThread::Mutex>::Lock Guard;
+        typedef Trinity::ObjectLevelLockable<Map, ZThread::Mutex>::Lock Guard;
 
         MapEntry const* i_mapEntry;
         uint8 i_spawnMode;
@@ -291,7 +286,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         uint32 i_InstanceId;
         uint32 m_unloadTimer;
 
-        MapRefManager m_mapRefManager;
     private:
         typedef GridReadGuard ReadGuard;
         typedef GridWriteGuard WriteGuard;
@@ -328,9 +322,11 @@ enum InstanceResetMethod
     INSTANCE_RESET_RESPAWN_DELAY
 };
 
-class MANGOS_DLL_SPEC InstanceMap : public Map
+class TRINITY_DLL_SPEC InstanceMap : public Map
 {
     public:
+        typedef std::list<Player *> PlayerList;                 // online players only
+
         InstanceMap(uint32 id, time_t, uint32 InstanceId, uint8 SpawnMode);
         ~InstanceMap();
         bool Add(Player *);
@@ -338,24 +334,33 @@ class MANGOS_DLL_SPEC InstanceMap : public Map
         void Update(const uint32&);
         void CreateInstanceData(bool load);
         bool Reset(uint8 method);
-        uint32 GetScriptId() { return i_script_id; }
+        std::string GetScript() { return i_script; }
         InstanceData* GetInstanceData() { return i_data; }
         void PermBindAllPlayers(Player *player);
+        PlayerList const& GetPlayers() const { return i_Players;}
+        void SendToPlayers(WorldPacket const* data) const;
         time_t GetResetTime();
         void UnloadAll(bool pForce);
         bool CanEnter(Player* player);
-        void SendResetWarnings(uint32 timeLeft) const;
+        uint32 GetPlayersCountExceptGMs() const;
+        uint32 HavePlayers() const { return !i_Players.empty(); }
+        void SendResetWarnings(uint32 timeLeft);
         void SetResetSchedule(bool on);
     private:
         bool m_resetAfterUnload;
         bool m_unloadWhenEmpty;
         InstanceData* i_data;
-        uint32 i_script_id;
+        std::string i_script;
+        // only online players that are inside the instance currently
+        // TODO ? - use the grid instead to access the players
+        PlayerList i_Players;
 };
 
-class MANGOS_DLL_SPEC BattleGroundMap : public Map
+class TRINITY_DLL_SPEC BattleGroundMap : public Map
 {
     public:
+        typedef std::list<Player *> PlayerList;                 // online players only
+
         BattleGroundMap(uint32 id, time_t, uint32 InstanceId);
         ~BattleGroundMap();
 
@@ -364,6 +369,8 @@ class MANGOS_DLL_SPEC BattleGroundMap : public Map
         bool CanEnter(Player* player);
         void SetUnload();
         void UnloadAll(bool pForce);
+    private:
+        PlayerList i_Players;
 };
 
 /*inline

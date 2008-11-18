@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -47,12 +49,6 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 
     Item *pItem = pUser->GetItemByPos(bagIndex, slot);
     if(!pItem)
-    {
-        pUser->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, NULL, NULL );
-        return;
-    }
-
-    if(pItem->GetGUID() != item_guid)
     {
         pUser->SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, NULL, NULL );
         return;
@@ -241,7 +237,7 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
             uint32 flags = fields[1].GetUInt32();
 
             pItem->SetUInt64Value(ITEM_FIELD_GIFTCREATOR, 0);
-            pItem->SetEntry(entry);
+            pItem->SetUInt32Value(OBJECT_FIELD_ENTRY, entry);
             pItem->SetUInt32Value(ITEM_FIELD_FLAGS, flags);
             pItem->SetState(ITEM_CHANGED, pUser);
             delete result;
@@ -263,6 +259,7 @@ void WorldSession::HandleGameObjectUseOpcode( WorldPacket & recv_data )
     CHECK_PACKET_SIZE(recv_data,8);
 
     uint64 guid;
+    uint32 spellId = OPEN_CHEST;
 
     recv_data >> guid;
 
@@ -305,6 +302,10 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    // can't use our own spells when we're in possession of another unit,
+    if(_player->isPossessing())
+        return;
+
     // client provided targets
     SpellCastTargets targets;
     if(!targets.read(&recvPacket,_player))
@@ -321,7 +322,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     }
 
     Spell *spell = new Spell(_player, spellInfo, false);
-    spell->m_cast_count = cast_count;                       // set count of casts
+    spell->m_cast_count = cast_count;                       //set count of casts
     spell->prepare(&targets);
 }
 
@@ -350,6 +351,27 @@ void WorldSession::HandleCancelAuraOpcode( WorldPacket& recvPacket)
     SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellId);
     if (!spellInfo)
         return;
+
+    // Remove possess/charm/sight aura from the possessed/charmed as well
+    // TODO: Remove this once the ability to cancel aura sets at once is implemented
+    if(_player->GetCharm() || _player->GetFarsightTarget())
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MOD_POSSESS ||
+                spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MOD_POSSESS_PET ||
+                spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MOD_CHARM ||
+                spellInfo->EffectApplyAuraName[i] == SPELL_AURA_BIND_SIGHT)
+            {
+                _player->RemoveAurasDueToSpellByCancel(spellId);
+                if (_player->GetCharm())
+                    _player->GetCharm()->RemoveAurasDueToSpellByCancel(spellId);
+                else if (_player->GetFarsightTarget()->GetTypeId() != TYPEID_DYNAMICOBJECT)
+                    ((Unit*)_player->GetFarsightTarget())->RemoveAurasDueToSpellByCancel(spellId);
+                return;
+            }
+        }
+    }
 
     // not allow remove non positive spells and spells with attr SPELL_ATTR_CANT_CANCEL
     if(!IsPositiveSpell(spellId) || (spellInfo->Attributes & SPELL_ATTR_CANT_CANCEL))
@@ -454,7 +476,8 @@ void WorldSession::HandleTotemDestroy( WorldPacket& recvPacket)
         return;
 
     Creature* totem = ObjectAccessor::GetCreature(*_player,_player->m_TotemSlot[slotId]);
-    if(totem && totem->isTotem())
+    // Don't unsummon sentry totem
+    if(totem && totem->isTotem() && totem->GetEntry() != SENTRY_TOTEM_ENTRY)
         ((Totem*)totem)->UnSummon();
 }
 

@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "ThreatManager.h"
@@ -101,7 +103,7 @@ void HostilReference::addThreat(float pMod)
         fireStatusChanged(ThreatRefStatusChangeEvent(UEV_THREAT_REF_THREAT_CHANGE, this, pMod));
     if(isValid() && pMod >= 0)
     {
-        Unit* victim_owner = getTarget()->GetOwner();
+        Unit* victim_owner = getTarget()->GetCharmerOrOwner();
         if(victim_owner && victim_owner->isAlive())
             getSource()->addThreat(victim_owner, 0.0f);     // create a threat to the owner of a pet, if the pet attacks
     }
@@ -130,11 +132,11 @@ void HostilReference::updateOnlineStatus()
         !getTarget()->hasUnitState(UNIT_STAT_IN_FLIGHT)))
     {
         Creature* creature = (Creature* ) getSourceUnit();
-        online = getTarget()->isInAccessablePlaceFor(creature);
+        online = getTarget()->isInAccessiblePlaceFor(creature);
         if(!online)
         {
             if(creature->AI()->canReachByRangeAttack(getTarget()))
-                online = true;                              // not accessable but stays online
+                online = true;                              // not accessible but stays online
         }
         else
             accessible = true;
@@ -153,7 +155,7 @@ void HostilReference::setOnlineOfflineState(bool pIsOnline)
     {
         iOnline = pIsOnline;
         if(!iOnline)
-            setAccessibleState(false);                      // if not online that not accessable as well
+            setAccessibleState(false);                      // if not online that not accessible as well
         fireStatusChanged(ThreatRefStatusChangeEvent(UEV_THREAT_REF_ONLINE_STATUS, this));
     }
 }
@@ -265,18 +267,18 @@ HostilReference* ThreatContainer::selectNextVictim(Creature* pAttacker, HostilRe
 {
     HostilReference* currentRef = NULL;
     bool found = false;
-
+    
     std::list<HostilReference*>::iterator lastRef = iThreatList.end();
     lastRef--;
-
+    
     for(std::list<HostilReference*>::iterator iter = iThreatList.begin(); iter != iThreatList.end() && !found; ++iter)
     {
         currentRef = (*iter);
 
         Unit* target = currentRef->getTarget();
         assert(target);                                     // if the ref has status online the target must be there !
-
-        // some units are prefered in comparison to others
+        
+        // some units are preferred in comparison to others
         if(iter != lastRef && (target->IsImmunedToDamage(pAttacker->GetMeleeDamageSchoolMask(), false) ||
                 target->hasUnitState(UNIT_STAT_CONFUSED | UNIT_STAT_FLEEING)
                 ) )

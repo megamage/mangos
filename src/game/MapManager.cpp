@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "MapManager.h"
@@ -31,7 +33,7 @@
 #include "Corpse.h"
 #include "ObjectMgr.h"
 
-#define CLASS_LOCK MaNGOS::ClassLevelLockable<MapManager, ZThread::Mutex>
+#define CLASS_LOCK Trinity::ClassLevelLockable<MapManager, ZThread::Mutex>
 INSTANTIATE_SINGLETON_2(MapManager, CLASS_LOCK);
 INSTANTIATE_CLASS_MUTEX(MapManager, ZThread::Mutex);
 
@@ -82,7 +84,7 @@ void MapManager::checkAndCorrectGridStatesArray()
             ok = false;
             si_GridStates[i] = i_GridStates[i];
         }
-        #ifdef MANGOS_DEBUG
+        #ifdef TRINITY_DEBUG
         // inner class checking only when compiled with debug
         if(!si_GridStates[i]->checkMagic())
         {
@@ -107,9 +109,9 @@ MapManager::_GetBaseMap(uint32 id)
         Guard guard(*this);
 
         const MapEntry* entry = sMapStore.LookupEntry(id);
-        if (entry && entry->IsDungeon())
+        if (entry && entry->Instanceable())
         {
-            m = new MapInstanced(id, i_gridCleanUpDelay);
+            m = new MapInstanced(id, i_gridCleanUpDelay, 0);
         }
         else
         {
@@ -163,7 +165,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
                 {
                     // probably there must be special opcode, because client has this string constant in GlobalStrings.lua
                     // TODO: this is not a good place to send the message
-                    player->GetSession()->SendAreaTriggerMessage("You must be in a raid group to enter %s instance", mapName);
+                    player->GetSession()->SendAreaTriggerMessage(player->GetSession()->GetTrinityString(810), mapName);
                     sLog.outDebug("MAP: Player '%s' must be in a raid group to enter instance of '%s'", player->GetName(), mapName);
                     return false;
                 }
@@ -195,7 +197,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
 
                 if (!instance_map)
                 {
-                    player->GetSession()->SendAreaTriggerMessage("You cannot enter %s while in a ghost mode", mapName);
+                    player->GetSession()->SendAreaTriggerMessage(player->GetSession()->GetTrinityString(811), mapName);
                     sLog.outDebug("MAP: Player '%s' doesn't has a corpse in instance '%s' and can't enter", player->GetName(), mapName);
                     return false;
                 }
@@ -220,7 +222,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
         return true;
 }
 
-void MapManager::DeleteInstance(uint32 mapid, uint32 instanceId)
+void MapManager::DeleteInstance(uint32 mapid, uint32 instanceId, uint8 mode)
 {
     Map *m = _GetBaseMap(mapid);
     if (m && m->Instanceable())
@@ -244,8 +246,6 @@ MapManager::Update(time_t diff)
     if( !i_timer.Passed() )
         return;
 
-    ObjectAccessor::Instance().UpdatePlayers(i_timer.GetCurrent());
-
     for(MapMapType::iterator iter=i_maps.begin(); iter != i_maps.end(); ++iter)
     {
         checkAndCorrectGridStatesArray();                   // debugging code, should be deleted some day
@@ -267,7 +267,7 @@ void MapManager::DoDelayedMovesAndRemoves()
 
 bool MapManager::ExistMapAndVMap(uint32 mapid, float x,float y)
 {
-    GridPair p = MaNGOS::ComputeGridPair(x,y);
+    GridPair p = Trinity::ComputeGridPair(x,y);
 
     int gx=63-p.x_coord;
     int gy=63-p.y_coord;
@@ -283,7 +283,7 @@ bool MapManager::IsValidMAP(uint32 mapid)
 
 void MapManager::LoadGrid(int mapid, float x, float y, const WorldObject* obj, bool no_unload)
 {
-    CellPair p = MaNGOS::ComputeCellPair(x,y);
+    CellPair p = Trinity::ComputeCellPair(x,y);
     Cell cell(p);
     GetMap(mapid, obj)->LoadGrid(cell,no_unload);
 }
@@ -336,7 +336,7 @@ uint32 MapManager::GetNumPlayersInInstances()
         MapInstanced::InstancedMaps &maps = ((MapInstanced *)map)->GetInstancedMaps();
         for(MapInstanced::InstancedMaps::iterator mitr = maps.begin(); mitr != maps.end(); ++mitr)
             if(mitr->second->IsDungeon())
-                ret += ((InstanceMap*)mitr->second)->GetPlayers().getSize();
+                ret += ((InstanceMap*)mitr->second)->GetPlayers().size();
     }
     return ret;
 }

@@ -14,9 +14,7 @@
 #define _NO_CVCONST_H
 #include <dbghelp.h>
 #include "WheatyExceptionReport.h"
-#include "revision.h"
-#include "revision_nr.h"
-#define CrashFolder _T("Crashs")
+#define CrashFolder _T("Crashes")
 //#pragma comment(linker, "/defaultlib:dbghelp.lib")
 
 inline LPTSTR ErrorMessage(DWORD dw)
@@ -331,22 +329,22 @@ void WheatyExceptionReport::PrintSystemInfo()
 //===========================================================================
 void WheatyExceptionReport::printTracesForAllThreads()
 {
-  HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
-  THREADENTRY32 te32;
-
+  HANDLE hThreadSnap = INVALID_HANDLE_VALUE; 
+  THREADENTRY32 te32; 
+ 
   DWORD dwOwnerPID = GetCurrentProcessId();
   m_hProcess = GetCurrentProcess();
-  // Take a snapshot of all running threads
-  hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
-  if( hThreadSnap == INVALID_HANDLE_VALUE )
-    return;
-
-  // Fill in the size of the structure before using it.
-  te32.dwSize = sizeof(THREADENTRY32 );
-
+  // Take a snapshot of all running threads  
+  hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 ); 
+  if( hThreadSnap == INVALID_HANDLE_VALUE ) 
+    return; 
+ 
+  // Fill in the size of the structure before using it. 
+  te32.dwSize = sizeof(THREADENTRY32 ); 
+ 
   // Retrieve information about the first thread,
   // and exit if unsuccessful
-  if( !Thread32First( hThreadSnap, &te32 ) )
+  if( !Thread32First( hThreadSnap, &te32 ) ) 
   {
     CloseHandle( hThreadSnap );    // Must clean up the
                                    //   snapshot object!
@@ -356,8 +354,8 @@ void WheatyExceptionReport::printTracesForAllThreads()
   // Now walk the thread list of the system,
   // and display information about each thread
   // associated with the specified process
-  do
-  {
+  do 
+  { 
     if( te32.th32OwnerProcessID == dwOwnerPID )
     {
         CONTEXT context;
@@ -369,11 +367,12 @@ void WheatyExceptionReport::printTracesForAllThreads()
         }
         CloseHandle(threadHandle);
     }
-  } while( Thread32Next(hThreadSnap, &te32 ) );
+  } while( Thread32Next(hThreadSnap, &te32 ) ); 
 
 //  Don't forget to clean up the snapshot object.
   CloseHandle( hThreadSnap );
 }
+
 
 //===========================================================================
 // Open the report file, and write the desired information to it.  Called by
@@ -386,7 +385,6 @@ PEXCEPTION_POINTERS pExceptionInfo )
     GetLocalTime(&systime);
 
     // Start out with a banner
-    _tprintf(_T("Revision: %s %s %s %s\r\n"), REVISION_DATE, REVISION_TIME, REVISION_NR, REVISION_ID);
     _tprintf(_T("Date %u:%u:%u. Time %u:%u \r\n"), systime.wDay, systime.wMonth, systime.wYear, systime.wHour, systime.wMinute);
     PEXCEPTION_RECORD pExceptionRecord = pExceptionInfo->ExceptionRecord;
 
@@ -601,11 +599,11 @@ struct CSymbolInfoPackage : public SYMBOL_INFO_PACKAGE
 //============================================================
 void WheatyExceptionReport::WriteStackDetails(
 PCONTEXT pContext,
-bool bWriteVariables, HANDLE pThreadHandle)                 // true if local/params should be output
+bool bWriteVariables, HANDLE pThreadHandle)                                      // true if local/params should be output
 {
     _tprintf( _T("\r\nCall stack:\r\n") );
 
-    _tprintf( _T("Address   Frame     Function      SourceFile\r\n") );
+    _tprintf( _T("Address   Frame     Function		SourceFile\r\n") );
 
     DWORD dwMachineType = 0;
     // Could use SymSetOptions here to add the SYMOPT_DEFERRED_LOADS flag
@@ -907,10 +905,10 @@ char* Name)
 
             //             BasicType basicType = GetBasicType(children.ChildId[i], modBase );
             //
-            //          pszCurrBuffer += sprintf( pszCurrBuffer, rgBaseType[basicType]);
+            // 			pszCurrBuffer += sprintf( pszCurrBuffer, rgBaseType[basicType]);
             //
             // Emit the variable name
-            //          pszCurrBuffer += sprintf( pszCurrBuffer, "\'%s\'", Name );
+            //			pszCurrBuffer += sprintf( pszCurrBuffer, "\'%s\'", Name );
 
             pszCurrBuffer = FormatOutputValue( pszCurrBuffer, basicType,
                 length, (PVOID)dwFinalOffset );

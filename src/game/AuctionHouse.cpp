@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "WorldPacket.h"
@@ -87,8 +89,8 @@ bool WorldSession::SendAuctionInfo(WorldPacket & data, AuctionEntry* auction)
         sLog.outError("auction to item, that doesn't exist !!!!");
         return false;
     }
-    data << (uint32) auction->Id;
-    data << (uint32) pItem->GetEntry();
+    data << auction->Id;
+    data << pItem->GetUInt32Value(OBJECT_FIELD_ENTRY);
 
     for (uint8 i = 0; i < MAX_INSPECTED_ENCHANTMENT_SLOT; i++)
     {
@@ -176,7 +178,7 @@ void WorldSession::SendAuctionOutbiddedMail(AuctionEntry *auction, uint32 newPri
     }
 }
 
-//this function sends mail, when auction is cancelled to old bidder
+//this function sends mail, when auction is canceled to old bidder
 void WorldSession::SendAuctionCancelledToBidderMail( AuctionEntry* auction )
 {
     uint64 bidder_guid = MAKE_NEW_GUID(auction->bidder, 0, HIGHGUID_PLAYER);
@@ -243,7 +245,7 @@ void WorldSession::HandleAuctionSellItem( WorldPacket & recv_data )
         SendAuctionCommandResult(0, AUCTION_SELL_ITEM, AUCTION_INTERNAL_ERROR);
         return;
     }
-    // prevent sending bag with items (cheat: can be placed in bag after adding equiped empty bag to auction)
+    // prevent sending bag with items (cheat: can be placed in bag after adding equipped empty bag to auction)
     if(!it)
     {
         SendAuctionCommandResult(0, AUCTION_SELL_ITEM, AUCTION_ITEM_NOT_FOUND);
@@ -714,7 +716,7 @@ void WorldSession::HandleAuctionListItems( WorldPacket & recv_data )
                                             ItemLocale const *il = objmgr.GetItemLocale(proto->ItemId);
                                             if (il)
                                             {
-                                                if (il->Name.size() > size_t(loc_idx) && !il->Name[loc_idx].empty())
+                                                if (il->Name.size() > loc_idx && !il->Name[loc_idx].empty())
                                                     name = il->Name[loc_idx];
                                             }
                                         }

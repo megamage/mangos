@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -30,7 +32,7 @@
 #include "GossipDef.h"
 #include "Language.h"
 #include "MapManager.h"
-#include <fstream>
+#include "BattleGroundMgr.h"
 
 bool ChatHandler::HandleDebugInArcCommand(const char* /*args*/)
 {
@@ -125,72 +127,70 @@ bool ChatHandler::HandleBuyErrorCommand(const char* args)
     return true;
 }
 
-bool ChatHandler::HandleSendOpcodeCommand(const char* /*args*/)
+bool ChatHandler::HandleSendOpcodeCommand(const char* args)
 {
     Unit *unit = getSelectedUnit();
     if (!unit || (unit->GetTypeId() != TYPEID_PLAYER))
         unit = m_session->GetPlayer();
 
-    std::ifstream ifs("opcode.txt");
-    if(ifs.bad())
+    FILE *file = fopen("opcode.txt", "r");
+    if(!file)
         return false;
 
-    uint32 opcode;
-    ifs >> opcode;
+    uint32 type;
+
+    uint32 val1;
+    uint64 val2;
+    float val3;
+    char val4[101];
+
+    uint32 opcode = 0;
+    fscanf(file, "%u", &opcode);
+    if(!opcode)
+    {
+        fclose(file);
+        return false;
+    }
 
     WorldPacket data(opcode, 0);
 
-    while(!ifs.eof())
+    while(fscanf(file, "%u", &type) != EOF)
     {
-        std::string type;
-        ifs >> type;
-
-        if(type == "uint8")
+        switch(type)
         {
-            uint8 val1;
-            ifs >> val1;
-            data << val1;
-        }
-        else if(type == "uint16")
-        {
-            uint16 val2;
-            ifs >> val2;
-            data << val2;
-        }
-        else if(type == "uint32")
-        {
-            uint32 val3;
-            ifs >> val3;
-            data << val3;
-        }
-        else if(type == "uint64")
-        {
-            uint64 val4;
-            ifs >> val4;
-            data << val4;
-        }
-        else if(type == "float")
-        {
-            float val5;
-            ifs >> val5;
-            data << val5;
-        }
-        else if(type == "string")
-        {
-            std::string val6;
-            ifs >> val6;
-            data << val6;
-        }
-        else if(type == "pguid")
-        {
-            data.append(unit->GetPackGUID());
-        }
-        else
-        {
-            sLog.outDebug("Sending opcode: unknown type %s", type.c_str());
+            case 0:                                         // uint8
+                fscanf(file, "%u", &val1);
+                data << uint8(val1);
+                break;
+            case 1:                                         // uint16
+                fscanf(file, "%u", &val1);
+                data << uint16(val1);
+                break;
+            case 2:                                         // uint32
+                fscanf(file, "%u", &val1);
+                data << uint32(val1);
+                break;
+            case 3:                                         // uint64
+                fscanf(file, I64FMTD, &val2);
+                data << uint64(val2);
+                break;
+            case 4:                                         // float
+                fscanf(file, "%f", &val3);
+                data << float(val3);
+                break;
+            case 5:                                         // string
+                fscanf(file, "%s", val4, 101);
+                data << val4;
+                break;
+            case 6:                                         // packed guid
+                data.append(unit->GetPackGUID());
+                break;
+            default:
+                fclose(file);
+                return false;
         }
     }
-    ifs.close();
+    fclose(file);
     sLog.outDebug("Sending opcode %u", data.GetOpcode());
     data.hexlike();
     ((Player*)unit)->GetSession()->SendPacket(&data);
@@ -218,7 +218,7 @@ bool ChatHandler::HandlePlaySound2Command(const char* args)
         return false;
 
     uint32 soundid = atoi(args);
-    m_session->GetPlayer()->PlaySound(soundid, false);
+    m_session->GetPlayer()->SendPlaySound(soundid, false);
     return true;
 }
 
@@ -262,7 +262,7 @@ bool ChatHandler::HandleSendQuestPartyMsgCommand(const char* args)
     return true;
 }
 
-bool ChatHandler::HandleGetLootRecipient(const char* /*args*/)
+bool ChatHandler::HandleGetLootRecipient(const char* args)
 {
     Creature* target = getSelectedCreature();
     if(!target)
@@ -511,5 +511,54 @@ bool ChatHandler::HandleGetItemState(const char* args)
             SendSysMessage("All OK!");
     }
 
+    return true;
+}
+
+bool ChatHandler::HandleDebugArenaCommand(const char * /*args*/)
+{
+    sBattleGroundMgr.ToggleArenaTesting();
+    return true;
+}
+
+bool ChatHandler::HandleDebugThreatList(const char * /*args*/)
+{
+    Creature* target = getSelectedCreature();
+    if(!target || target->isTotem() || target->isPet())
+        return false;
+
+    std::list<HostilReference*>& tlist = target->getThreatManager().getThreatList();
+    std::list<HostilReference*>::iterator itr;
+    uint32 cnt = 0;
+    PSendSysMessage("Threat list of %s (guid %u)",target->GetName(), target->GetGUIDLow());
+    for(itr = tlist.begin(); itr != tlist.end(); ++itr)
+    {
+        Unit* unit = (*itr)->getTarget();
+        if(!unit)
+            continue;
+        ++cnt;
+        PSendSysMessage("   %u.   %s   (guid %u)  - threat %f",cnt,unit->GetName(), unit->GetGUIDLow(), (*itr)->getThreat());
+    }
+    SendSysMessage("End of threat list.");
+    return true;
+}
+
+bool ChatHandler::HandleDebugHostilRefList(const char * /*args*/)
+{
+    Unit* target = getSelectedUnit();
+    if(!target)
+        target = m_session->GetPlayer();
+    HostilReference* ref = target->getHostilRefManager().getFirst();
+    uint32 cnt = 0;
+    PSendSysMessage("Hostil reference list of %s (guid %u)",target->GetName(), target->GetGUIDLow());
+    while(ref)
+    {
+        if(Unit * unit = ref->getSource()->getOwner())
+        {
+            ++cnt;
+            PSendSysMessage("   %u.   %s   (guid %u)  - threat %f",cnt,unit->GetName(), unit->GetGUIDLow(), ref->getThreat());
+        }
+        ref = ref->next();
+    }
+    SendSysMessage("End of hostil reference list.");
     return true;
 }

@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MANGOSSERVER_GOSSIP_H
-#define MANGOSSERVER_GOSSIP_H
+#ifndef TRINITYCORE_GOSSIP_H
+#define TRINITYCORE_GOSSIP_H
 
 #include "Common.h"
 #include "QuestDef.h"
@@ -95,7 +97,7 @@ struct QuestMenuItem
 
 typedef std::vector<QuestMenuItem> QuestMenuItemList;
 
-class MANGOS_DLL_SPEC GossipMenu
+class TRINITY_DLL_SPEC GossipMenu
 {
     public:
         GossipMenu();
@@ -163,7 +165,7 @@ class QuestMenu
         QuestMenuItemList m_qItems;
 };
 
-class MANGOS_DLL_SPEC PlayerMenu
+class TRINITY_DLL_SPEC PlayerMenu
 {
     private:
         GossipMenu mGossipMenu;

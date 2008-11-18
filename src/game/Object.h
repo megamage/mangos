@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _OBJECT_H
@@ -25,6 +27,7 @@
 #include "UpdateData.h"
 #include "GameSystem/GridReference.h"
 #include "ObjectDefines.h"
+#include "GridDefines.h"
 
 #include <set>
 #include <string>
@@ -88,6 +91,7 @@ class Player;
 class Map;
 class UpdateMask;
 class InstanceData;
+class GameObject;
 
 typedef UNORDERED_MAP<Player*, UpdateData> UpdateDataMapType;
 
@@ -104,7 +108,7 @@ struct WorldLocation
         : mapid(loc.mapid), x(loc.x), y(loc.y), z(loc.z), o(loc.o) {}
 };
 
-class MANGOS_DLL_SPEC Object
+class TRINITY_DLL_SPEC Object
 {
     public:
         virtual ~Object ( );
@@ -317,10 +321,14 @@ class MANGOS_DLL_SPEC Object
         Object& operator=(Object const&);                   // prevent generation assigment operator
 };
 
-class MANGOS_DLL_SPEC WorldObject : public Object
+class TRINITY_DLL_SPEC WorldObject : public Object
 {
     public:
-        virtual ~WorldObject ( ) {}
+        virtual ~WorldObject ( );
+
+        virtual void AddToWorld();
+
+        virtual void RemoveFromWorld();
 
         virtual void Update ( uint32 /*time_diff*/ ) { }
 
@@ -407,8 +415,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         float GetAngle( const float x, const float y ) const;
         bool HasInArc( const float arcangle, const WorldObject* obj ) const;
 
-        virtual void SendMessageToSet(WorldPacket *data, bool self);
-        virtual void SendMessageToSetInRange(WorldPacket *data, float dist, bool self);
+        virtual void SendMessageToSet(WorldPacket *data, bool self, bool to_possessor = true);
+        virtual void SendMessageToSetInRange(WorldPacket *data, float dist, bool self, bool to_possessor = true);
         void BuildHeartBeatMsg( WorldPacket *data ) const;
         void BuildTeleportAckMsg( WorldPacket *data, float x, float y, float z, float ang) const;
         bool IsBeingTeleported() { return mSemaphoreTeleport; }
@@ -439,13 +447,19 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         // low level function for visibility change code, must be define in all main world object subclasses
         virtual bool isVisibleForInState(Player const* u, bool inVisibleList) const = 0;
 
+        // Low Level Packets
+        void SendPlaySound(uint32 Sound, bool OnlySelf);
+
         Map      * GetMap() const;
         Map const* GetBaseMap() const;
         Creature* SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype,uint32 despwtime);
-
+        GameObject* SummonGameObject(uint32 entry, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 respawnTime);
+        bool isActive() const { return m_isActive; }
+        virtual void setActive(bool isActive);
     protected:
         explicit WorldObject();
         std::string m_name;
+        bool m_isActive;
 
     private:
         uint32 m_mapId;

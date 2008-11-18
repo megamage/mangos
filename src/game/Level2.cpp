@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -561,7 +563,7 @@ bool ChatHandler::HandleLookupFactionCommand(const char* args)
         return false;
 
     // Can be NULL at console call
-    Player *target = getSelectedPlayer ();
+	Player *target = getSelectedPlayer ();
 
     std::string namepart = args;
     std::wstring wnamepart;
@@ -580,13 +582,12 @@ bool ChatHandler::HandleLookupFactionCommand(const char* args)
         if (factionEntry)
         {
             FactionState const* repState = NULL;
-            if(target)
-            {
-                FactionStateList::const_iterator repItr = target->m_factions.find (factionEntry->reputationListID);
-                if(repItr != target->m_factions.end())
-                    repState = &repItr->second;
-            }
-
+			if(target)
+			{
+				FactionStateList::const_iterator repItr = target->m_factions.find (factionEntry->reputationListID);
+				if(repItr != target->m_factions.end())
+					repState = &repItr->second;
+			}
 
             int loc = m_session ? m_session->GetSessionDbcLocale() : sWorld.GetDefaultDbcLocale();
             std::string name = factionEntry->name[loc];
@@ -616,32 +617,32 @@ bool ChatHandler::HandleLookupFactionCommand(const char* args)
                 // or              "id - [faction] [no reputation]" format
                 std::ostringstream ss;
                 if (m_session)
-                    ss << id << " - |cffffffff|Hfaction:" << id << "|h[" << name << " " << localeNames[loc] << "]|h|r";
-                else
-                    ss << id << " - " << name << " " << localeNames[loc];
+					ss << id << " - |cffffffff|Hfaction:" << id << "|h[" << name << " " << localeNames[loc] << "]|h|r";
+				else
+					ss << id << " - " << name << " " << localeNames[loc];
 
                 if (repState)                               // and then target!=NULL also
                 {
                     ReputationRank rank = target->GetReputationRank(factionEntry);
-                    std::string rankName = GetMangosString(ReputationRankStrIndex[rank]);
+                    std::string rankName = GetTrinityString(ReputationRankStrIndex[rank]);
 
                     ss << " " << rankName << "|h|r (" << target->GetReputation(factionEntry) << ")";
 
                     if(repState->Flags & FACTION_FLAG_VISIBLE)
-                        ss << GetMangosString(LANG_FACTION_VISIBLE);
+                        ss << GetTrinityString(LANG_FACTION_VISIBLE);
                     if(repState->Flags & FACTION_FLAG_AT_WAR)
-                        ss << GetMangosString(LANG_FACTION_ATWAR);
+                        ss << GetTrinityString(LANG_FACTION_ATWAR);
                     if(repState->Flags & FACTION_FLAG_PEACE_FORCED)
-                        ss << GetMangosString(LANG_FACTION_PEACE_FORCED);
+                        ss << GetTrinityString(LANG_FACTION_PEACE_FORCED);
                     if(repState->Flags & FACTION_FLAG_HIDDEN)
-                        ss << GetMangosString(LANG_FACTION_HIDDEN);
+                        ss << GetTrinityString(LANG_FACTION_HIDDEN);
                     if(repState->Flags & FACTION_FLAG_INVISIBLE_FORCED)
-                        ss << GetMangosString(LANG_FACTION_INVISIBLE_FORCED);
+                        ss << GetTrinityString(LANG_FACTION_INVISIBLE_FORCED);
                     if(repState->Flags & FACTION_FLAG_INACTIVE)
-                        ss << GetMangosString(LANG_FACTION_INACTIVE);
+                        ss << GetTrinityString(LANG_FACTION_INACTIVE);
                 }
                 else
-                    ss << GetMangosString(LANG_FACTION_NOREPUTATION);
+                    ss << GetTrinityString(LANG_FACTION_NOREPUTATION);
 
                 SendSysMessage(ss.str().c_str());
                 counter++;
@@ -692,7 +693,7 @@ bool ChatHandler::HandleModifyRepCommand(const char * args)
         amount = -42000;
         for (; r < MAX_REPUTATION_RANK; ++r)
         {
-            std::string rank = GetMangosString(ReputationRankStrIndex[r]);
+            std::string rank = GetTrinityString(ReputationRankStrIndex[r]);
             if(rank.empty())
                 continue;
 
@@ -749,7 +750,7 @@ bool ChatHandler::HandleModifyRepCommand(const char * args)
     return true;
 }
 
-bool ChatHandler::HandleNameCommand(const char* /*args*/)
+bool ChatHandler::HandleNameCommand(const char* args)
 {
     /* Temp. disabled
         if(!*args)
@@ -1056,7 +1057,7 @@ bool ChatHandler::HandleTurnObjectCommand(const char* args)
     float rot2 = sin(o/2);
     float rot3 = cos(o/2);
 
-    Map* map = obj->GetMap();
+    Map* map = MapManager::Instance().GetMap(obj->GetMapId(),obj);
     map->Remove(obj,false);
 
     obj->Relocate(obj->GetPositionX(), obj->GetPositionY(), obj->GetPositionZ(), o);
@@ -1140,7 +1141,7 @@ bool ChatHandler::HandleNpcMoveCommand(const char* args)
             const_cast<CreatureData*>(data)->posZ = z;
             const_cast<CreatureData*>(data)->orientation = o;
         }
-        pCreature->GetMap()->CreatureRelocation(pCreature,x, y, z,o);
+        MapManager::Instance().GetMap(pCreature->GetMapId(),pCreature)->CreatureRelocation(pCreature,x, y, z,o);
         pCreature->GetMotionMaster()->Initialize();
         if(pCreature->isAlive())                            // dead creature will reset movement generator at respawn
         {
@@ -1187,7 +1188,7 @@ bool ChatHandler::HandleMoveObjectCommand(const char* args)
     {
         Player *chr = m_session->GetPlayer();
 
-        Map* map = obj->GetMap();
+        Map* map = MapManager::Instance().GetMap(obj->GetMapId(),obj);
         map->Remove(obj,false);
 
         obj->Relocate(chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ(), obj->GetOrientation());
@@ -1213,7 +1214,7 @@ bool ChatHandler::HandleMoveObjectCommand(const char* args)
             return false;
         }
 
-        Map* map = obj->GetMap();
+        Map* map = MapManager::Instance().GetMap(obj->GetMapId(),obj);
         map->Remove(obj,false);
 
         obj->Relocate(x, y, z, obj->GetOrientation());
@@ -1313,6 +1314,7 @@ bool ChatHandler::HandleDelVendorItemCommand(const char* args)
         return false;
     }
     uint32 itemId = atol(pitem);
+
 
     if(!objmgr.RemoveVendorItem(vendor->GetEntry(),itemId))
     {
@@ -1800,7 +1802,6 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
     // get additional information from DB
     else
     {
-        //                                                     0
         QueryResult *result = CharacterDatabase.PQuery("SELECT totaltime FROM characters WHERE guid = '%u'", GUID_LOPART(targetGUID));
         if (!result)
         {
@@ -1811,7 +1812,7 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
         Field *fields = result->Fetch();
         total_player_time = fields[0].GetUInt32();
         delete result;
-
+        
         Tokens data;
         if (!Player::LoadValuesArrayFromDB(data,targetGUID))
         {
@@ -1819,17 +1820,16 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
             SetSentErrorMessage(true);
             return false;
         }
-
+        
         money = Player::GetUInt32ValueFromArray(data, PLAYER_FIELD_COINAGE);
         level = Player::GetUInt32ValueFromArray(data, UNIT_FIELD_LEVEL);
-
         accId = objmgr.GetPlayerAccountIdByGUID(targetGUID);
     }
 
-    std::string username = GetMangosString(LANG_ERROR);
-    std::string last_ip = GetMangosString(LANG_ERROR);
+    std::string username = GetTrinityString(LANG_ERROR);
+    std::string last_ip = GetTrinityString(LANG_ERROR);
     uint32 security = 0;
-    std::string last_login = GetMangosString(LANG_ERROR);
+    std::string last_login = GetTrinityString(LANG_ERROR);
 
     QueryResult* result = loginDatabase.PQuery("SELECT username,gmlevel,last_ip,last_login FROM account WHERE id = '%u'",accId);
     if(result)
@@ -1837,8 +1837,8 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
         Field* fields = result->Fetch();
         username = fields[0].GetCppString();
         security = fields[1].GetUInt32();
-
-        if(!m_session || m_session->GetSecurity() >= security)
+        
+		if(!m_session || m_session->GetSecurity() >= security)
         {
             last_ip = fields[2].GetCppString();
             last_login = fields[3].GetCppString();
@@ -1852,7 +1852,7 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
         delete result;
     }
 
-    PSendSysMessage(LANG_PINFO_ACCOUNT, (target?"":GetMangosString(LANG_OFFLINE)), name.c_str(), GUID_LOPART(targetGUID), username.c_str(), accId, security, last_ip.c_str(), last_login.c_str(), latency);
+    PSendSysMessage(LANG_PINFO_ACCOUNT, (target?"":GetTrinityString(LANG_OFFLINE)), name.c_str(), GUID_LOPART(targetGUID), username.c_str(), accId, security, last_ip.c_str(), last_login.c_str(), latency);
 
     std::string timeStr = secsToTimeString(total_player_time,true,true);
     uint32 gold = money /GOLD;
@@ -1879,22 +1879,22 @@ bool ChatHandler::HandlePInfoCommand(const char* args)
             else
                 FactionName = "#Not found#";
             ReputationRank rank = target->GetReputationRank(factionEntry);
-            std::string rankName = GetMangosString(ReputationRankStrIndex[rank]);
+            std::string rankName = GetTrinityString(ReputationRankStrIndex[rank]);
             std::ostringstream ss;
             ss << itr->second.ID << ": |cffffffff|Hfaction:" << itr->second.ID << "|h[" << FactionName << "]|h|r " << rankName << "|h|r (" << target->GetReputation(factionEntry) << ")";
 
             if(itr->second.Flags & FACTION_FLAG_VISIBLE)
-                ss << GetMangosString(LANG_FACTION_VISIBLE);
+                ss << GetTrinityString(LANG_FACTION_VISIBLE);
             if(itr->second.Flags & FACTION_FLAG_AT_WAR)
-                ss << GetMangosString(LANG_FACTION_ATWAR);
+                ss << GetTrinityString(LANG_FACTION_ATWAR);
             if(itr->second.Flags & FACTION_FLAG_PEACE_FORCED)
-                ss << GetMangosString(LANG_FACTION_PEACE_FORCED);
+                ss << GetTrinityString(LANG_FACTION_PEACE_FORCED);
             if(itr->second.Flags & FACTION_FLAG_HIDDEN)
-                ss << GetMangosString(LANG_FACTION_HIDDEN);
+                ss << GetTrinityString(LANG_FACTION_HIDDEN);
             if(itr->second.Flags & FACTION_FLAG_INVISIBLE_FORCED)
-                ss << GetMangosString(LANG_FACTION_INVISIBLE_FORCED);
+                ss << GetTrinityString(LANG_FACTION_INVISIBLE_FORCED);
             if(itr->second.Flags & FACTION_FLAG_INACTIVE)
-                ss << GetMangosString(LANG_FACTION_INACTIVE);
+                ss << GetTrinityString(LANG_FACTION_INACTIVE);
 
             SendSysMessage(ss.str().c_str());
         }
@@ -1907,7 +1907,7 @@ void ChatHandler::ShowTicket(uint64 guid, char const* text, char const* time)
 {
     std::string name;
     if(!objmgr.GetPlayerNameByGUID(guid,name))
-        name = GetMangosString(LANG_UNKNOWN);
+        name = GetTrinityString(LANG_UNKNOWN);
 
     PSendSysMessage(LANG_COMMAND_TICKETVIEW, name.c_str(),time,text);
 }
@@ -1920,30 +1920,30 @@ bool ChatHandler::HandleTicketCommand(const char* args)
     // ticket<end>
     if (!px)
     {
-        if(!m_session)
-        {
-            SendSysMessage(LANG_PLAYER_NOT_FOUND);
-            SetSentErrorMessage(true);
-            return false;
-        }
+		if(!m_session)
+		{
+			SendSysMessage(LANG_PLAYER_NOT_FOUND);
+			SetSentErrorMessage(true);
+			return false;
+		}
 
         size_t count = ticketmgr.GetTicketCount();
 
         bool accept = m_session->GetPlayer()->isAcceptTickets();
-
-        PSendSysMessage(LANG_COMMAND_TICKETCOUNT, count, accept ?  GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+		
+		PSendSysMessage(LANG_COMMAND_TICKETCOUNT, count, accept ?  GetTrinityString(LANG_ON) : GetTrinityString(LANG_OFF));
         return true;
     }
 
     // ticket on
     if(strncmp(px,"on",3) == 0)
     {
-        if(!m_session)
-        {
-            SendSysMessage(LANG_PLAYER_NOT_FOUND);
-            SetSentErrorMessage(true);
-            return false;
-        }
+		if(!m_session)
+		{
+			SendSysMessage(LANG_PLAYER_NOT_FOUND);
+			SetSentErrorMessage(true);
+			return false;
+		}
 
         m_session->GetPlayer()->SetAcceptTicket(true);
         SendSysMessage(LANG_COMMAND_TICKETON);
@@ -1953,12 +1953,12 @@ bool ChatHandler::HandleTicketCommand(const char* args)
     // ticket off
     if(strncmp(px,"off",4) == 0)
     {
-        if(!m_session)
-        {
-            SendSysMessage(LANG_PLAYER_NOT_FOUND);
-            SetSentErrorMessage(true);
-            return false;
-        }
+		if(!m_session)
+		{
+			SendSysMessage(LANG_PLAYER_NOT_FOUND);
+			SetSentErrorMessage(true);
+			return false;
+		}
 
         m_session->GetPlayer()->SetAcceptTicket(false);
         SendSysMessage(LANG_COMMAND_TICKETOFF);
@@ -2042,7 +2042,9 @@ bool ChatHandler::HandleDelTicketCommand(const char *args)
             SetSentErrorMessage(true);
             return false;
         }
+
         Field* fields = result->Fetch();
+
         uint32 guid = fields[0].GetUInt32();
         delete result;
 
@@ -2675,7 +2677,7 @@ bool ChatHandler::HandleWpModifyCommand(const char* args)
                 // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
                 wpCreature2->LoadFromDB(wpCreature2->GetDBTableGUIDLow(), map);
                 map->Add(wpCreature2);
-                //npcCreature->GetMap()->Add(wpCreature2);
+                //MapManager::Instance().GetMap(npcCreature->GetMapId())->Add(wpCreature2);
             }
 
             WaypointMgr.SetNodePosition(lowguid, point, chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ());
@@ -2985,7 +2987,7 @@ bool ChatHandler::HandleWpShowCommand(const char* args)
             // To call _LoadGoods(); _LoadQuests(); CreateTrainerSpells();
             wpCreature->LoadFromDB(wpCreature->GetDBTableGUIDLow(),map);
             map->Add(wpCreature);
-            //wpCreature->GetMap()->Add(wpCreature);
+            //MapManager::Instance().GetMap(wpCreature->GetMapId())->Add(wpCreature);
         }while( result->NextRow() );
 
         // Cleanup memory
@@ -3465,7 +3467,7 @@ bool ChatHandler::HandleGameObjectCommand(const char* args)
         return false;
     }
 
-    sLog.outDebug(GetMangosString(LANG_GAMEOBJECT_CURRENT), goI->name, db_lowGUID, x, y, z, o);
+    sLog.outDebug(GetTrinityString(LANG_GAMEOBJECT_CURRENT), goI->name, db_lowGUID, x, y, z, o);
 
     map->Add(pGameObj);
 
@@ -3574,12 +3576,12 @@ bool ChatHandler::HandleLookupEventCommand(const char* args)
 
         if (Utf8FitTo(descr, wnamepart))
         {
-            char const* active = activeEvents.find(id) != activeEvents.end() ? GetMangosString(LANG_ACTIVE) : "";
-
-            if(m_session)
-                PSendSysMessage(LANG_EVENT_ENTRY_LIST_CHAT,id,id,eventData.description.c_str(),active );
-            else
-                PSendSysMessage(LANG_EVENT_ENTRY_LIST_CONSOLE,id,eventData.description.c_str(),active );
+            char const* active = activeEvents.find(id) != activeEvents.end() ? GetTrinityString(LANG_ACTIVE) : "";
+            
+			if(m_session)
+				PSendSysMessage(LANG_EVENT_ENTRY_LIST_CHAT,id,id,eventData.description.c_str(),active );
+			else
+				PSendSysMessage(LANG_EVENT_ENTRY_LIST_CONSOLE,id,eventData.description.c_str(),active );
 
             ++counter;
         }
@@ -3591,14 +3593,14 @@ bool ChatHandler::HandleLookupEventCommand(const char* args)
     return true;
 }
 
-bool ChatHandler::HandleEventActiveListCommand(const char* /*args*/)
+bool ChatHandler::HandleEventActiveListCommand(const char* args)
 {
     uint32 counter = 0;
 
     GameEvent::GameEventDataMap const& events = gameeventmgr.GetEventMap();
     GameEvent::ActiveEvents const& activeEvents = gameeventmgr.GetActiveEventList();
 
-    char const* active = GetMangosString(LANG_ACTIVE);
+    char const* active = GetTrinityString(LANG_ACTIVE);
 
     for(GameEvent::ActiveEvents::const_iterator itr = activeEvents.begin(); itr != activeEvents.end(); ++itr )
     {
@@ -3606,9 +3608,9 @@ bool ChatHandler::HandleEventActiveListCommand(const char* /*args*/)
         GameEventData const& eventData = events[event_id];
 
         if(m_session)
-            PSendSysMessage(LANG_EVENT_ENTRY_LIST_CHAT,event_id,event_id,eventData.description.c_str(),active );
-        else
-            PSendSysMessage(LANG_EVENT_ENTRY_LIST_CONSOLE,event_id,eventData.description.c_str(),active );
+			PSendSysMessage(LANG_EVENT_ENTRY_LIST_CHAT,event_id,event_id,eventData.description.c_str(),active );
+		else
+			PSendSysMessage(LANG_EVENT_ENTRY_LIST_CONSOLE,event_id,eventData.description.c_str(),active );
 
         ++counter;
     }
@@ -3650,7 +3652,7 @@ bool ChatHandler::HandleEventInfoCommand(const char* args)
 
     GameEvent::ActiveEvents const& activeEvents = gameeventmgr.GetActiveEventList();
     bool active = activeEvents.find(event_id) != activeEvents.end();
-    char const* activeStr = active ? GetMangosString(LANG_ACTIVE) : "";
+    char const* activeStr = active ? GetTrinityString(LANG_ACTIVE) : "";
 
     std::string startTimeStr = TimeToTimestampStr(eventData.start);
     std::string endTimeStr = TimeToTimestampStr(eventData.end);
@@ -3842,13 +3844,15 @@ bool ChatHandler::HandleLearnAllRecipesCommand(const char* args)
         return false;
     }
 
-    if(!*args)
+    if (!*args)
         return false;
 
     std::wstring wnamepart;
 
     if(!Utf8toWStr(args,wnamepart))
         return false;
+
+    uint32 counter = 0;                                     // Counter for figure out that we found smth.
 
     // converting string that we try to find to lower case
     wstrToLower( wnamepart );
@@ -3907,13 +3911,13 @@ bool ChatHandler::HandleLearnAllRecipesCommand(const char* args)
 
 bool ChatHandler::HandleLookupPlayerIpCommand(const char* args)
 {
-
+  
     if (!*args)
         return false;
 
     std::string ip = strtok ((char*)args, " ");
-    char* limit_str = strtok (NULL, " ");
-    int32 limit = limit_str ? atoi (limit_str) : -1;
+	char* limit_str = strtok (NULL, " ");
+	int32 limit = limit_str ? atoi (limit_str) : -1;
 
     loginDatabase.escape_string (ip);
 
@@ -3928,8 +3932,8 @@ bool ChatHandler::HandleLookupPlayerAccountCommand(const char* args)
         return false;
 
     std::string account = strtok ((char*)args, " ");
-    char* limit_str = strtok (NULL, " ");
-    int32 limit = limit_str ? atoi (limit_str) : -1;
+	char* limit_str = strtok (NULL, " ");
+	int32 limit = limit_str ? atoi (limit_str) : -1;
 
     if (!AccountMgr::normilizeString (account))
         return false;
@@ -3943,13 +3947,13 @@ bool ChatHandler::HandleLookupPlayerAccountCommand(const char* args)
 
 bool ChatHandler::HandleLookupPlayerEmailCommand(const char* args)
 {
-
+  
     if (!*args)
         return false;
 
     std::string email = strtok ((char*)args, " ");
-    char* limit_str = strtok (NULL, " ");
-    int32 limit = limit_str ? atoi (limit_str) : -1;
+	char* limit_str = strtok (NULL, " ");
+	int32 limit = limit_str ? atoi (limit_str) : -1;
 
     loginDatabase.escape_string (email);
 
@@ -3973,7 +3977,7 @@ bool ChatHandler::LookupPlayerSearchCommand(QueryResult* result, int32 limit)
         Field* fields = result->Fetch();
         uint32 acc_id = fields[0].GetUInt32();
         std::string acc_name = fields[1].GetCppString();
-
+        
         QueryResult* chars = CharacterDatabase.PQuery("SELECT guid,name FROM characters WHERE account = '%u'", acc_id);
         if(chars)
         {
@@ -4005,8 +4009,8 @@ bool ChatHandler::LookupPlayerSearchCommand(QueryResult* result, int32 limit)
 /// Triggering corpses expire check in world
 bool ChatHandler::HandleServerCorpsesCommand(const char* /*args*/)
 {
-    CorpsesErase();
-    return true;
+	CorpsesErase();
+	return true;
 }
 
 bool ChatHandler::HandleRepairitemsCommand(const char* /*args*/)
@@ -4018,7 +4022,7 @@ bool ChatHandler::HandleRepairitemsCommand(const char* /*args*/)
         PSendSysMessage(LANG_NO_CHAR_SELECTED);
         SetSentErrorMessage(true);
         return false;
-    }
+	}
 
     // Repair items
     target->DurabilityRepairAll(false, 0, false);
@@ -4026,36 +4030,6 @@ bool ChatHandler::HandleRepairitemsCommand(const char* /*args*/)
     PSendSysMessage(LANG_YOU_REPAIR_ITEMS, target->GetName());
     if(needReportToTarget(target))
         ChatHandler(target).PSendSysMessage(LANG_YOUR_ITEMS_REPAIRED, GetName());
-    return true;
-}
-
-bool ChatHandler::HandleWaterwalkCommand(const char* args)
-{
-    if(!*args)
-        return false;
-
-    Player *player = getSelectedPlayer();
-
-    if(!player)
-    {
-        PSendSysMessage(LANG_NO_CHAR_SELECTED);
-        SetSentErrorMessage(true);
-        return false;
-    }
-
-    if (strncmp(args, "on", 3) == 0)
-        player->SetMovement(MOVE_WATER_WALK);               // ON
-    else if (strncmp(args, "off", 4) == 0)
-        player->SetMovement(MOVE_LAND_WALK);                // OFF
-    else
-    {
-        SendSysMessage(LANG_USE_BOL);
-        return false;
-    }
-
-    PSendSysMessage(LANG_YOU_SET_WATERWALK, args, player->GetName());
-    if(needReportToTarget(player))
-        ChatHandler(player).PSendSysMessage(LANG_YOUR_WATERWALK_SET, args, GetName());
     return true;
 }
 
@@ -4115,65 +4089,202 @@ bool ChatHandler::HandleNpcUnFollowCommand(const char* /*args*/)
     return true;
 }
 
-bool ChatHandler::HandleNpcTameCommand(const char* /*args*/)
+bool ChatHandler::HandleCreatePetCommand(const char* args)
 {
-    Creature *creatureTarget = getSelectedCreature ();
-    if (!creatureTarget || creatureTarget->isPet ())
+	Player *player = m_session->GetPlayer();
+	Creature *creatureTarget = getSelectedCreature();
+    
+	if(!creatureTarget || creatureTarget->isPet() || creatureTarget->GetTypeId() == TYPEID_PLAYER)
+	{
+		PSendSysMessage(LANG_SELECT_CREATURE);
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	CreatureInfo const* cInfo = objmgr.GetCreatureTemplate(creatureTarget->GetEntry());
+	// Creatures with family 0 crashes the server
+	if(cInfo->family == 0)
+	{
+		PSendSysMessage("This creature cannot be tamed. (family id: 0).");
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	if(player->GetPetGUID())
+	{
+		PSendSysMessage("You already have a pet");
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	// Everything looks OK, create new pet
+	Pet* pet = new Pet(HUNTER_PET);
+
+	if(!pet->CreateBaseAtCreature(creatureTarget))
+	{
+		delete pet;
+		PSendSysMessage("Error 1");
+		return false;
+	}
+
+	creatureTarget->setDeathState(JUST_DIED);
+	creatureTarget->RemoveCorpse();
+	creatureTarget->SetHealth(0); // just for nice GM-mode view
+
+	pet->SetUInt64Value(UNIT_FIELD_SUMMONEDBY, player->GetGUID());
+	pet->SetUInt64Value(UNIT_FIELD_CREATEDBY, player->GetGUID());
+	pet->SetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE, player->getFaction());
+
+	if(!pet->InitStatsForLevel(creatureTarget->getLevel()))
+	{
+		sLog.outError("ERROR: InitStatsForLevel() in EffectTameCreature failed! Pet deleted.");
+		PSendSysMessage("Error 2");
+		return false;
+	}
+
+	// prepare visual effect for levelup
+	pet->SetUInt32Value(UNIT_FIELD_LEVEL,creatureTarget->getLevel()-1);
+
+	 pet->GetCharmInfo()->SetPetNumber(objmgr.GeneratePetNumber(), true);
+	 // this enables pet details window (Shift+P)
+	 pet->AIM_Initialize();
+	 pet->InitPetCreateSpells();
+	 pet->SetHealth(pet->GetMaxHealth());
+
+	 MapManager::Instance().GetMap(pet->GetMapId(), pet)->Add((Creature*)pet);
+
+	 // visual effect for levelup
+	 pet->SetUInt32Value(UNIT_FIELD_LEVEL,creatureTarget->getLevel());
+
+	 player->SetPet(pet);
+	 pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+	 player->PetSpellInitialize();
+
+	return true;
+}
+
+bool ChatHandler::HandlePetLearnCommand(const char* args)
+{
+	if(!*args)
+		return false;
+
+	Player *plr = m_session->GetPlayer();
+	Pet *pet = plr->GetPet();
+
+	if(!pet)
+	{
+		PSendSysMessage("You have no pet");
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	uint32 spellId = extractSpellIdFromLink((char*)args);
+
+	if(!spellId || !sSpellStore.LookupEntry(spellId))
+        return false;
+
+	// Check if pet already has it
+	if(pet->HasSpell(spellId))
+	{
+		PSendSysMessage("Pet already has spell: %u", spellId);
+		SetSentErrorMessage(true);
+        return false;
+	}
+
+	// Check if spell is valid
+	SpellEntry const* spellInfo = sSpellStore.LookupEntry(spellId);
+	if(!spellInfo || !SpellMgr::IsSpellValid(spellInfo))
     {
-        PSendSysMessage (LANG_SELECT_CREATURE);
-        SetSentErrorMessage (true);
+        PSendSysMessage(LANG_COMMAND_SPELL_BROKEN,spellId);
+        SetSentErrorMessage(true);
         return false;
     }
 
-    Player *player = m_session->GetPlayer ();
+	pet->learnSpell(spellId);
 
-    if(player->GetPetGUID ())
+	PSendSysMessage("Pet has learned spell %u", spellId);
+	return true;
+}
+
+bool ChatHandler::HandlePetUnlearnCommand(const char *args)
+{
+	if(!*args)
+		return false;
+
+	Player *plr = m_session->GetPlayer();
+	Pet *pet = plr->GetPet();
+
+	if(!pet)
+	{
+		PSendSysMessage("You have no pet");
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	uint32 spellId = extractSpellIdFromLink((char*)args);
+
+	if(pet->HasSpell(spellId))
+		pet->removeSpell(spellId);
+	else
+		PSendSysMessage("Pet doesn't have that spell");
+
+	return true;
+}
+
+bool ChatHandler::HandlePetTpCommand(const char *args)
+{
+	if(!*args)
+		return false;
+
+	Player *plr = m_session->GetPlayer();
+	Pet *pet = plr->GetPet();
+
+	if(!pet)
+	{
+		PSendSysMessage("You have no pet");
+		SetSentErrorMessage(true);
+		return false;
+	}
+
+	uint32 tp = atol(args);
+
+	pet->SetTP(tp);
+
+	PSendSysMessage("Pet's tp changed to %u", tp);
+	return true;
+}
+
+bool ChatHandler::HandleActivateObjectCommand(const char *args)
+{
+	if(!*args)
+		return false;
+
+	char* cId = extractKeyFromLink((char*)args,"Hgameobject");
+    if(!cId)
+        return false;
+
+    uint32 lowguid = atoi(cId);
+    if(!lowguid)
+        return false;
+
+    GameObject* obj = NULL;
+
+    // by DB guid
+    if (GameObjectData const* go_data = objmgr.GetGOData(lowguid))
+        obj = GetObjectGlobalyWithGuidOrNearWithDbGuid(lowguid,go_data->id);
+
+    if(!obj)
     {
-        SendSysMessage (LANG_YOU_ALREADY_HAVE_PET);
-        SetSentErrorMessage (true);
+        PSendSysMessage(LANG_COMMAND_OBJNOTFOUND, lowguid);
+        SetSentErrorMessage(true);
         return false;
     }
 
-    CreatureInfo const* cInfo = creatureTarget->GetCreatureInfo();
+	// Activate
+	obj->SetLootState(GO_READY);
+	obj->UseDoorOrButton(10000);
 
-    if (!cInfo->isTameable ())
-    {
-        PSendSysMessage (LANG_CREATURE_NON_TAMEABLE,cInfo->Entry);
-        SetSentErrorMessage (true);
-        return false;
-    }
+	PSendSysMessage("Object activated!");
 
-    // Everything looks OK, create new pet
-    Pet* pet = player->CreateTamedPetFrom (creatureTarget);
-    if (!pet)
-    {
-        PSendSysMessage (LANG_CREATURE_NON_TAMEABLE,cInfo->Entry);
-        SetSentErrorMessage (true);
-        return false;
-    }
-
-    // place pet before player
-    float x,y,z;
-    player->GetClosePoint (x,y,z,creatureTarget->GetObjectSize (),CONTACT_DISTANCE);
-    pet->Relocate (x,y,z,M_PI-player->GetOrientation ());
-
-    // set pet to defensive mode by default (some classes can't control contolled pets in fact).
-    pet->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
-
-    // prepare visual effect for levelup
-    pet->SetUInt32Value(UNIT_FIELD_LEVEL,creatureTarget->getLevel()-1);
-
-    // add to world
-    pet->GetMap()->Add((Creature*)pet);
-
-    // visual effect for levelup
-    pet->SetUInt32Value(UNIT_FIELD_LEVEL,creatureTarget->getLevel());
-
-    // caster have pet now
-    player->SetPet(pet);
-
-    pet->SavePetToDB(PET_SAVE_AS_CURRENT);
-    player->PetSpellInitialize();
-
-    return true;
+	return true;
 }

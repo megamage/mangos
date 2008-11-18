@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 /// \addtogroup world The World
@@ -49,13 +51,6 @@ enum ShutdownMask
     SHUTDOWN_MASK_IDLE    = 2,
 };
 
-enum ShutdownExitCode
-{
-    SHUTDOWN_EXIT_CODE = 0,
-    ERROR_EXIT_CODE    = 1,
-    RESTART_EXIT_CODE  = 2,
-};
-
 /// Timers for different object refresh rates
 enum WorldTimers
 {
@@ -66,7 +61,8 @@ enum WorldTimers
     WUPDATE_UPTIME      = 4,
     WUPDATE_CORPSES     = 5,
     WUPDATE_EVENTS      = 6,
-    WUPDATE_COUNT       = 7
+    WUPDATE_COUNT       = 7,
+
 };
 
 /// Configuration elements
@@ -98,6 +94,7 @@ enum WorldConfigs
     CONFIG_STRICT_CHARTER_NAMES,
     CONFIG_STRICT_PET_NAMES,
     CONFIG_CHARACTERS_CREATING_DISABLED,
+    CONFIG_MAX_WHO,
     CONFIG_CHARACTERS_PER_ACCOUNT,
     CONFIG_CHARACTERS_PER_REALM,
     CONFIG_SKIP_CINEMATICS,
@@ -108,8 +105,6 @@ enum WorldConfigs
     CONFIG_INSTANCE_IGNORE_LEVEL,
     CONFIG_INSTANCE_IGNORE_RAID,
     CONFIG_BATTLEGROUND_CAST_DESERTER,
-    CONFIG_BATTLEGROUND_QUEUE_ANNOUNCER_ENABLE,
-    CONFIG_BATTLEGROUND_QUEUE_ANNOUNCER_PLAYERONLY,
     CONFIG_INSTANCE_RESET_TIME_HOUR,
     CONFIG_INSTANCE_UNLOAD_DELAY,
     CONFIG_CAST_UNSTUCK,
@@ -137,7 +132,7 @@ enum WorldConfigs
     CONFIG_SKILL_GAIN_GATHERING,
     CONFIG_SKILL_GAIN_WEAPON,
     CONFIG_MAX_OVERSPEED_PINGS,
-    CONFIG_SAVE_RESPAWN_TIME_IMMEDIATLY,
+    CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY,
     CONFIG_WEATHER,
     CONFIG_EXPANSION,
     CONFIG_CHATFLOOD_MESSAGE_COUNT,
@@ -148,7 +143,6 @@ enum WorldConfigs
     CONFIG_WORLD_BOSS_LEVEL_DIFF,
     CONFIG_QUEST_LOW_LEVEL_HIDE_DIFF,
     CONFIG_QUEST_HIGH_LEVEL_HIDE_DIFF,
-    CONFIG_DETECT_POS_COLLISION,
     CONFIG_RESTRICTED_LFG_CHANNEL,
     CONFIG_SILENTLY_GM_JOIN_TO_CHANNEL,
     CONFIG_TALENTS_INSPECTING,
@@ -162,11 +156,36 @@ enum WorldConfigs
     CONFIG_DEATH_SICKNESS_LEVEL,
     CONFIG_DEATH_CORPSE_RECLAIM_DELAY_PVP,
     CONFIG_DEATH_CORPSE_RECLAIM_DELAY_PVE,
+
+    CONFIG_PLAYER_START_GOLD,
+    CONFIG_PLAYER_START_HONOR,
+    CONFIG_PLAYER_START_ARENAPTS,
+    CONFIG_GM_START_LEVEL,
+    CONFIG_INSTANT_LOGOUT,
+    CONFIG_BG_START_MUSIC,
+    CONFIG_START_ALL_SPELLS,
+    CONFIG_HONOR_AFTER_DUEL,
+    CONFIG_START_ALL_EXPLORED,
+    CONFIG_DISABLE_BREATHING,
+    CONFIG_START_ALL_REP,
+    CONFIG_ALWAYS_MAXSKILL,
+    CONFIG_START_ALL_TAXI,
+    CONFIG_PVP_TOKEN_ENABLE,
+    CONFIG_PVP_TOKEN_MAP_TYPE,
+    CONFIG_PVP_TOKEN_ID,
+    CONFIG_PVP_TOKEN_COUNT,
+    CONFIG_NO_RESET_TALENT_COST,
+
     CONFIG_THREAT_RADIUS,
     CONFIG_DECLINED_NAMES_USED,
     CONFIG_LISTEN_RANGE_SAY,
     CONFIG_LISTEN_RANGE_TEXTEMOTE,
     CONFIG_LISTEN_RANGE_YELL,
+    CONFIG_ARENA_MAX_RATING_DIFFERENCE,
+    CONFIG_ARENA_RATING_DISCARD_TIMER,
+    CONFIG_ARENA_AUTO_DISTRIBUTE_POINTS,
+    CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS,
+    CONFIG_BATTLEGROUND_PREMATURE_FINISH_TIMER,
     CONFIG_VALUE_COUNT
 };
 
@@ -297,26 +316,27 @@ enum RealmZone
 /// Storage class for commands issued for delayed execution
 struct CliCommandHolder
 {
-    typedef void Print(const char*);
+	typedef void Print(const char*);
 
-    char *m_command;
-    Print* m_print;
+	char *m_command;
+	Print* m_print;
 
-    CliCommandHolder(const char *command, Print* zprint)
-        : m_print(zprint)
-    {
-        size_t len = strlen(command)+1;
-        m_command = new char[len];
-        memcpy(m_command, command, len);
-    }
+	CliCommandHolder(const char *command, Print* zprint)
+		: m_print(zprint)
+	{
+		size_t len = strlen(command)+1;
+		m_command = new char[len];
+		memcpy(m_command, command, len);
+	}
 
-    ~CliCommandHolder() { delete[] m_command; }
+	~CliCommandHolder() { delete[] m_command; }
 };
 
 /// The World
 class World
 {
     public:
+        static volatile bool m_stopEvent;
         static volatile uint32 m_worldLoopCounter;
 
         World();
@@ -324,6 +344,7 @@ class World
 
         WorldSession* FindSession(uint32 id) const;
         void AddSession(WorldSession *s);
+
         bool RemoveSession(uint32 id);
         /// Get the number of current active sessions
         void UpdateMaxSessionCounters();
@@ -386,20 +407,18 @@ class World
         void SetInitialWorldSettings();
         void LoadConfigSettings(bool reload = false);
 
-        void SendWorldText(int32 string_id, ...);
+        void SendWorldText(int32 string_id, ...); 
         void SendGlobalMessage(WorldPacket *packet, WorldSession *self = 0, uint32 team = 0);
         void SendZoneMessage(uint32 zone, WorldPacket *packet, WorldSession *self = 0, uint32 team = 0);
         void SendZoneText(uint32 zone, const char *text, WorldSession *self = 0, uint32 team = 0);
         void SendServerMessage(uint32 type, const char *text = "", Player* player = NULL);
 
         /// Are we in the middle of a shutdown?
+        uint32 GetShutdownMask() const { return m_ShutdownMask; }
         bool IsShutdowning() const { return m_ShutdownTimer > 0; }
-        void ShutdownServ(uint32 time, uint32 options, uint8 exitcode);
+        void ShutdownServ(uint32 time, uint32 options = 0);
         void ShutdownCancel();
         void ShutdownMsg(bool show = false, Player* player = NULL);
-        static uint8 GetExitCode() { return m_ExitCode; }
-        static void StopNow(uint8 exitcode) { m_stopEvent = true; m_ExitCode = exitcode; }
-        static bool IsStopped() { return m_stopEvent; }
 
         void Update(time_t diff);
 
@@ -434,11 +453,13 @@ class World
         void KickAllLess(AccountTypes sec);
         void KickAllQueued();
         BanReturn BanAccount(BanMode mode, std::string nameOrIP, std::string duration, std::string reason, std::string author);
-        bool RemoveBanAccount(BanMode mode, std::string nameOrIP);
+		bool RemoveBanAccount(BanMode mode, std::string nameOrIP);
 
         void ScriptsStart(std::map<uint32, std::multimap<uint32, ScriptInfo> > const& scripts, uint32 id, Object* source, Object* target);
         void ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* source, Object* target);
         bool IsScriptScheduled() const { return !m_scriptSchedule.empty(); }
+
+        bool IsAllowedMap(uint32 mapid) { return m_forbiddenMapIds.count(mapid) == 0 ;}
 
         // for max speed access
         static float GetMaxVisibleDistanceForCreature() { return m_MaxVisibleDistanceForCreature; }
@@ -454,17 +475,19 @@ class World
         void UpdateResultQueue();
         void InitResultQueue();
 
+        void ForceGameEventUpdate();
+
         void UpdateRealmCharCount(uint32 accid);
 
         LocaleConstant GetAvailableDbcLocale(LocaleConstant locale) const { if(m_availableDbcLocaleMask & (1 << locale)) return locale; else return m_defaultDbcLocale; }
 
-        //used World DB version
-        void LoadDBVersion();
-        char const* GetDBVersion() { return m_DBVersion.c_str(); }
+		//used World DB version
+		void LoadDBVersion();
+		char const* GetDBVersion() { return m_DBVersion.c_str(); }
 
-        //used Script version
-        void SetScriptsVersion(char const* version) { m_ScriptsVersion = version ? version : "unknown scripting library"; }
-        char const* GetScriptsVersion() { return m_ScriptsVersion.c_str(); }
+		//used Script version
+		void SetScriptsVersion(char const* version) { m_ScriptsVersion = version ? version : "unknown scripting library"; }
+		char const* GetScriptsVersion() { return m_ScriptsVersion.c_str(); }
 
     protected:
         void _UpdateGameTime();
@@ -475,11 +498,6 @@ class World
         void InitDailyQuestResetTime();
         void ResetDailyQuests();
     private:
-        static volatile bool m_stopEvent;
-        static uint8 m_ExitCode;
-        uint32 m_ShutdownTimer;
-        uint32 m_ShutdownMask;
-
         time_t m_startTime;
         time_t m_gameTime;
         IntervalTimer m_timers[WUPDATE_COUNT];
@@ -505,6 +523,10 @@ class World
         bool m_allowMovement;
         std::string m_motd;
         std::string m_dataPath;
+        std::set<uint32> m_forbiddenMapIds;
+
+        uint32 m_ShutdownTimer;
+        uint32 m_ShutdownMask;
 
         // for max speed access
         static float m_MaxVisibleDistanceForCreature;
@@ -523,18 +545,18 @@ class World
 
         //Player Queue
         Queue m_QueuedPlayer;
-
+        
         //sessions that are added async
         void AddSession_(WorldSession* s);
         ZThread::LockedQueue<WorldSession*, ZThread::FastMutex> addSessQueue;
 
-        //used versions
-        std::string m_DBVersion;
-        std::string m_ScriptsVersion;
+		//used versions
+		std::string m_DBVersion;
+		std::string m_ScriptsVersion;
 };
 
 extern uint32 realmID;
 
-#define sWorld MaNGOS::Singleton<World>::Instance()
+#define sWorld Trinity::Singleton<World>::Instance()
 #endif
 /// @}

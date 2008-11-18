@@ -52,6 +52,7 @@
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
+				FloatingPointModel="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
@@ -125,7 +126,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/MP /bigobj"
+				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\shared\vmap;..\..\dep\ACE_wrappers"
 				PreprocessorDefinitions="WIN32;_DEBUG;MANGOS_DEBUG;_LIB;"
@@ -133,6 +134,7 @@
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
+				FloatingPointModel="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
@@ -213,6 +215,7 @@
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="1"
+				FloatingPointModel="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
@@ -286,7 +289,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="/MP /bigobj"
+				AdditionalOptions="/MP"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="..\..\dep\include;..\..\src\framework;..\..\src\shared;..\..\src\shared\vmap;..\..\dep\ACE_wrappers"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;"
@@ -294,6 +297,7 @@
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="0"
+				FloatingPointModel="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\game__$(PlatformName)_$(ConfigurationName)\game.pch"
@@ -644,6 +648,70 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\ObjectGridLoader.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvP.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvP.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPEP.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPEP.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPHP.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPHP.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPMgr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPNA.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPNA.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPSI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPSI.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPTF.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPTF.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPZM.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\OutdoorPvPZM.h"
 				>
 			</File>
 			<File
@@ -1031,11 +1099,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\ObjectPosSelector.cpp"
+				RelativePath="..\..\src\game\OutdoorPvPObjectiveAI.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\ObjectPosSelector.h"
+				RelativePath="..\..\src\game\OutdoorPvPObjectiveAI.h"
 				>
 			</File>
 			<File
@@ -1064,6 +1132,14 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\PointMovementGenerator.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\PossessedAI.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\PossessedAI.h"
 				>
 			</File>
 			<File
@@ -1308,14 +1384,6 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\HostilRefManager.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\MapReference.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\MapRefManager.h"
 				>
 			</File>
 			<File

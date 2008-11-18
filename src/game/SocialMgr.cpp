@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "SocialMgr.h"
@@ -310,9 +312,6 @@ PlayerSocial *SocialMgr::LoadFromDB(QueryResult *result, uint32 guid)
     uint32 flags = 0;
     std::string note = "";
 
-    // used to speed up check below. Using GetNumberOfSocialsWithFlag will cause unneeded iteration
-    uint32 friendCounter=0, ignoreCounter=0;
-
     do
     {
         Field *fields  = result->Fetch();
@@ -321,17 +320,11 @@ PlayerSocial *SocialMgr::LoadFromDB(QueryResult *result, uint32 guid)
         flags = fields[1].GetUInt32();
         note = fields[2].GetCppString();
 
-        if((flags & SOCIAL_FLAG_IGNORED) && ignoreCounter >= SOCIALMGR_IGNORE_LIMIT)
-            continue;
-        if((flags & SOCIAL_FLAG_FRIEND) && friendCounter >= SOCIALMGR_FRIEND_LIMIT)
-            continue;
-
         social->m_playerSocialMap[friend_guid] = FriendInfo(flags, note);
 
-        if(flags & SOCIAL_FLAG_IGNORED)
-            ignoreCounter++;
-        else
-            friendCounter++;
+        // client limit
+        if(social->m_playerSocialMap.size() >= 50)
+            break;
     }
     while( result->NextRow() );
     delete result;

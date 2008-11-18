@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _ITEMPROTOTYPE_H
@@ -76,7 +78,7 @@ enum ItemBondingType
 {
     NO_BIND                                     = 0,
     BIND_WHEN_PICKED_UP                         = 1,
-    BIND_WHEN_EQUIPED                           = 2,
+    BIND_WHEN_EQUIPPED                           = 2,
     BIND_WHEN_USE                               = 3,
     BIND_QUEST_ITEM                             = 4,
     BIND_QUEST_ITEM1                            = 5         // not used in game
@@ -97,18 +99,16 @@ enum ITEM_FLAGS
     ITEM_FLAGS_UNIQUE_EQUIPPED                = 0x00080000,
     ITEM_FLAGS_USEABLE_IN_ARENA               = 0x00200000,
     ITEM_FLAGS_THROWABLE                      = 0x00400000, // not used in game for check trow possibility, only for item in game tooltip
-    ITEM_FLAGS_SPECIALUSE                     = 0x00800000, // last used flag in 2.3.0
-    ITEM_FLAGS_BOA                            = 0x08000000, // bind on account
-    ITEM_FLAGS_MILLABLE                       = 0x20000000
+    ITEM_FLAGS_SPECIALUSE                     = 0x00800000  // last used flag in 2.3.0
 };
 
 enum BAG_FAMILY_MASK
 {
     BAG_FAMILY_MASK_ARROWS                    = 0x00000001,
     BAG_FAMILY_MASK_BULLETS                   = 0x00000002,
-    BAG_FAMILY_MASK_SOUL_SHARDS               = 0x00000004,
+    BAG_FAMILY_MASK_SHARDS                    = 0x00000004,
     BAG_FAMILY_MASK_LEATHERWORKING_SUPP       = 0x00000008,
-    BAG_FAMILY_MASK_INSCRIPTION_SUPP          = 0x00000010,
+    BAG_FAMILY_MASK_UNUSED                    = 0x00000010, // not used currently
     BAG_FAMILY_MASK_HERBS                     = 0x00000020,
     BAG_FAMILY_MASK_ENCHANTING_SUPP           = 0x00000040,
     BAG_FAMILY_MASK_ENGINEERING_SUPP          = 0x00000080,
@@ -116,10 +116,12 @@ enum BAG_FAMILY_MASK
     BAG_FAMILY_MASK_GEMS                      = 0x00000200,
     BAG_FAMILY_MASK_MINING_SUPP               = 0x00000400,
     BAG_FAMILY_MASK_SOULBOUND_EQUIPMENT       = 0x00000800,
-    BAG_FAMILY_MASK_VANITY_PETS               = 0x00001000,
-    BAG_FAMILY_MASK_CURRENCY_TOKENS           = 0x00002000,
-    BAG_FAMILY_MASK_QUEST_ITEMS               = 0x00004000
+    BAG_FAMILY_MASK_VANITY_PETS               = 0x00001000
 };
+
+/* TODO: Not entirely positive on need for this??
+enum SOCKET_CONTENT ();
+*/
 
 enum SocketColor
 {
@@ -273,7 +275,7 @@ enum ItemSubclassArmor
     ITEM_SUBCLASS_ARMOR_TOTEM                   = 9
 };
 
-#define MAX_ITEM_SUBCLASS_ARMOR                   10
+#define MAX_ITEM_SUBCLASS_ARMOR                  10
 
 enum ItemSubclassReagent
 {
@@ -387,22 +389,6 @@ enum ItemSubclassJunk
 };
 
 #define MAX_ITEM_SUBCLASS_JUNK                    6
-
-enum ItemSubclassGlyph
-{
-    ITEM_SUBCLASS_GLYPH_WARRIOR                 = 1,
-    ITEM_SUBCLASS_GLYPH_PALADIN                 = 2,
-    ITEM_SUBCLASS_GLYPH_HUNTER                  = 3,
-    ITEM_SUBCLASS_GLYPH_ROGUE                   = 4,
-    ITEM_SUBCLASS_GLYPH_PRIEST                  = 5,
-    ITEM_SUBCLASS_GLYPH_DEATH_KNIGHT            = 6,
-    ITEM_SUBCLASS_GLYPH_SHAMAN                  = 7,
-    ITEM_SUBCLASS_GLYPH_MAGE                    = 8,
-    ITEM_SUBCLASS_GLYPH_WARLOCK                 = 9,
-    ITEM_SUBCLASS_GLYPH_DRUID                   = 11
-};
-
-#define MAX_ITEM_SUBCLASS_GLYPH                   12
 
 const uint32 MaxItemSubclassValues[MAX_ITEM_CLASS] =
 {
@@ -538,7 +524,7 @@ struct ItemPrototype
     uint32 GemProperties;                                   // id from GemProperties.dbc
     uint32 RequiredDisenchantSkill;
     float  ArmorDamageModifier;
-    uint32 ScriptId;
+    char* ScriptName;
     uint32 DisenchantID;
     uint32 FoodType;
     uint32 MinMoneyLoot;

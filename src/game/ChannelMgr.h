@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,8 +17,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#ifndef MANGOSSERVER_CHANNELMGR_H
-#define MANGOSSERVER_CHANNELMGR_H
+#ifndef TRINITYCORE_CHANNELMGR_H
+#define TRINITYCORE_CHANNELMGR_H
 
 #include "Channel.h"
 #include "Policies/Singleton.h"
@@ -90,12 +92,12 @@ inline ChannelMgr* channelMgr(uint32 team)
 {
     if (sWorld.getConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
                                                             //For Test,No Seprate Faction
-        return &MaNGOS::Singleton<AllianceChannelMgr>::Instance();
+        return &Trinity::Singleton<AllianceChannelMgr>::Instance();
 
     if(team==ALLIANCE)
-        return &MaNGOS::Singleton<AllianceChannelMgr>::Instance();
+        return &Trinity::Singleton<AllianceChannelMgr>::Instance();
     if(team==HORDE)
-        return &MaNGOS::Singleton<HordeChannelMgr>::Instance();
+        return &Trinity::Singleton<HordeChannelMgr>::Instance();
     return NULL;
 }
 #endif

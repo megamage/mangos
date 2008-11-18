@@ -192,14 +192,8 @@
 			<File
 				RelativePath="..\..\src\shared\Database\SQLStorage.h">
 			</File>
-			<File
-				RelativePath="..\..\src\shared\Database\SQLStorageImpl.h">
-			</File>
 			<Filter
 				Name="DataStores">
-				<File
-					RelativePath="..\..\src\shared\Database\DBCEnums.h">
-				</File>
 				<File
 					RelativePath="..\..\src\shared\Database\dbcfile.cpp">
 				</File>
@@ -256,13 +250,13 @@
 				RelativePath="..\..\src\shared\Errors.h">
 			</File>
 			<File
-				RelativePath="..\..\src\shared\MemoryLeaks.cpp">
-			</File>
-			<File
-				RelativePath="..\..\src\shared\MemoryLeaks.h">
-			</File>
-			<File
 				RelativePath="..\..\dep\include\mersennetwister\MersenneTwister.h">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Mthread.cpp">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Mthread.h">
 			</File>
 			<File
 				RelativePath="..\..\src\shared\ProgressBar.cpp">
@@ -426,59 +420,13 @@
 			RelativePath="..\..\src\shared\Common.h">
 		</File>
 		<File
-			RelativePath="..\..\src\shared\revision.h">
-			<FileConfiguration
-				Name="Release|Win32">
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="Extract revision"
-					CommandLine="cd &quot;$(SolutionDir)..\src\shared&quot;
-&quot;$(TargetDir)\..\genrevision__$(PlatformName)_$(ConfigurationName)\genrevision.exe&quot; &quot;..\..&quot;
-"
-					AdditionalDependencies="$(SolutionDir)../.svn/entries;$(SolutionDir)../_svn/entries;$(SolutionDir)../.git/FETCH_HEAD"
-					Outputs="revision.h"/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Win32">
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="Extract revision"
-					CommandLine="cd &quot;$(SolutionDir)..\src\shared&quot;
-&quot;$(TargetDir)\..\genrevision__$(PlatformName)_$(ConfigurationName)\genrevision.exe&quot; &quot;..\..&quot;
-"
-					AdditionalDependencies="$(SolutionDir)../.svn/entries;$(SolutionDir)../_svn/entries;$(SolutionDir)../.git/FETCH_HEAD"
-					Outputs="revision.h"/>
-			</FileConfiguration>
-		</File>
-		<File
-			RelativePath="..\..\src\shared\revision_nr.h">
-		</File>
-		<File
 			RelativePath="..\..\src\shared\ServiceWin32.cpp">
 		</File>
 		<File
 			RelativePath="..\..\src\shared\ServiceWin32.h">
 		</File>
 		<File
-			RelativePath="..\..\src\shared\SystemConfig.h.in">
-			<FileConfiguration
-				Name="Release|Win32">
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="Performing Build SystemConfig.h"
-					CommandLine="copy ..\..\src\shared\SystemConfig.h.in ..\..\src\shared\SystemConfig.h
-"
-					Outputs="..\..\src\shared\SystemConfig.h"/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Win32">
-				<Tool
-					Name="VCCustomBuildTool"
-					Description="Performing Build SystemConfig.h"
-					CommandLine="copy ..\..\src\shared\SystemConfig.h.in ..\..\src\shared\SystemConfig.h
-"
-					Outputs="..\..\src\shared\SystemConfig.h"/>
-			</FileConfiguration>
+			RelativePath="..\..\src\shared\SystemConfig.h">
 		</File>
 	</Files>
 	<Globals>

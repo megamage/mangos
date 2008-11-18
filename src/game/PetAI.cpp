@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "PetAI.h"
@@ -46,8 +48,8 @@ void PetAI::MoveInLineOfSight(Unit *u)
 {
     if( !i_pet.getVictim() && i_pet.GetCharmInfo() &&
         i_pet.GetCharmInfo()->HasReactState(REACT_AGGRESSIVE) &&
-        u->isTargetableForAttack() && i_pet.IsHostileTo( u ) &&
-        u->isInAccessablePlaceFor(&i_pet))
+        i_pet.IsHostileTo( u ) && i_pet.canAttack(u) &&
+        u->isInAccessiblePlaceFor(&i_pet))
     {
         float attackRadius = i_pet.GetAttackDistance(u);
         if(i_pet.IsWithinDistInMap(u, attackRadius) && i_pet.GetDistanceZ(u) <= CREATURE_Z_ATTACK_RANGE)
@@ -63,8 +65,11 @@ void PetAI::MoveInLineOfSight(Unit *u)
 
 void PetAI::AttackStart(Unit *u)
 {
-    if( inCombat || !u || (i_pet.isPet() && ((Pet&)i_pet).getPetType() == MINI_PET) )
+    if( !u || (i_pet.isPet() && ((Pet&)i_pet).getPetType() == MINI_PET) )
         return;
+
+    if (inCombat && i_pet.getVictim() && u != i_pet.getVictim())
+        i_pet.AttackStop();
 
     if(i_pet.Attack(u,true))
     {
@@ -93,7 +98,7 @@ bool PetAI::_needToStop() const
     if(i_pet.isCharmed() && i_pet.getVictim() == i_pet.GetCharmer())
         return true;
 
-    return !i_pet.getVictim()->isTargetableForAttack();
+    return !i_pet.canAttack(i_pet.getVictim());
 }
 
 void PetAI::_stopAttack()
@@ -162,7 +167,7 @@ void PetAI::UpdateAI(const uint32 diff)
                     return;
             }
             // not required to be stopped case
-            else if( i_pet.isAttackReady() && i_pet.canReachWithAttack(i_pet.getVictim()) )
+            else if( i_pet.isAttackReady() && i_pet.IsWithinCombatDist(i_pet.getVictim(), ATTACK_DISTANCE) )
             {
                 i_pet.AttackerStateUpdate(i_pet.getVictim());
 

@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,29 +66,22 @@ enum SpellCastFlags
     CAST_FLAG_UNKNOWN1           = 0x00000002,
     CAST_FLAG_UNKNOWN2           = 0x00000010,
     CAST_FLAG_AMMO               = 0x00000020,
-    CAST_FLAG_UNKNOWN8           = 0x00000040,
-    CAST_FLAG_UNKNOWN9           = 0x00000080,
-    CAST_FLAG_UNKNOWN3           = 0x00000100,
-    CAST_FLAG_UNKNOWN6           = 0x00000800,              // wotlk
-    CAST_FLAG_UNKNOWN4           = 0x00020000,              // wotlk
-    CAST_FLAG_UNKNOWN5           = 0x00080000,              // wotlk
-    CAST_FLAG_UNKNOWN7           = 0x00200000               // wotlk
+    CAST_FLAG_UNKNOWN3           = 0x00000100
 };
 
 enum SpellNotifyPushType
 {
     PUSH_IN_FRONT,
     PUSH_IN_BACK,
+    PUSH_IN_LINE,
     PUSH_SELF_CENTER,
     PUSH_DEST_CENTER,
-    PUSH_TARGET_CENTER
 };
 
 bool IsQuestTameSpell(uint32 spellId);
 
-namespace MaNGOS
+namespace Trinity
 {
-    struct SpellNotifierPlayer;
     struct SpellNotifierCreatureAndPlayer;
 }
 
@@ -112,13 +107,15 @@ class SpellCastTargets
 
             m_itemTargetEntry  = target.m_itemTargetEntry;
 
-            m_srcX = target.m_srcX;
-            m_srcY = target.m_srcY;
-            m_srcZ = target.m_srcZ;
+            //m_srcX = target.m_srcX;
+            //m_srcY = target.m_srcY;
+            //m_srcZ = target.m_srcZ;
 
+            m_mapId = -1;
             m_destX = target.m_destX;
             m_destY = target.m_destY;
             m_destZ = target.m_destZ;
+            m_hasDest = target.m_hasDest;
 
             m_strTarget = target.m_strTarget;
 
@@ -130,7 +127,8 @@ class SpellCastTargets
         uint64 getUnitTargetGUID() const { return m_unitTargetGUID; }
         Unit *getUnitTarget() const { return m_unitTarget; }
         void setUnitTarget(Unit *target);
-        void setDestination(float x, float y, float z);
+        void setDestination(float x, float y, float z, bool send = true, int32 mapId = -1);
+        void setDestination(Unit *target, bool send = true);
 
         uint64 getGOTargetGUID() const { return m_GOTargetGUID; }
         GameObject *getGOTarget() const { return m_GOTarget; }
@@ -152,11 +150,14 @@ class SpellCastTargets
         }
 
         bool IsEmpty() const { return m_GOTargetGUID==0 && m_unitTargetGUID==0 && m_itemTarget==0 && m_CorpseTargetGUID==0; }
+        bool HasDest() const { return m_hasDest; }
 
         void Update(Unit* caster);
 
         float m_srcX, m_srcY, m_srcZ;
+        int32 m_mapId;
         float m_destX, m_destY, m_destZ;
+        bool m_hasDest;
         std::string m_strTarget;
 
         uint32 m_targetMask;
@@ -184,14 +185,28 @@ enum SpellState
     SPELL_STATE_DELAYED   = 5
 };
 
+enum ReplenishType
+{
+    REPLENISH_UNDEFINED = 0,
+    REPLENISH_HEALTH    = 20,
+    REPLENISH_MANA      = 21,
+    REPLENISH_RAGE      = 22
+};
+
+enum SpellTargets
+{
+    SPELL_TARGETS_FRIENDLY,
+    SPELL_TARGETS_AOE_DAMAGE,
+    SPELL_TARGETS_ENTRY
+};
+
 #define SPELL_SPELL_CHANNEL_UPDATE_INTERVAL 1000
 
 typedef std::multimap<uint64, uint64> SpellTargetTimeMap;
 
 class Spell
 {
-    friend struct MaNGOS::SpellNotifierPlayer;
-    friend struct MaNGOS::SpellNotifierCreatureAndPlayer;
+    friend struct Trinity::SpellNotifierCreatureAndPlayer;
     public:
 
         void EffectNULL(uint32 );
@@ -225,6 +240,7 @@ class Spell
         void EffectDualWield(uint32 i);
         void EffectPickPocket(uint32 i);
         void EffectAddFarsight(uint32 i);
+        void EffectSummonPossessed(uint32 i);
         void EffectSummonWild(uint32 i);
         void EffectSummonGuardian(uint32 i);
         void EffectHealMechanical(uint32 i);
@@ -341,7 +357,8 @@ class Spell
         void SetTargetMap(uint32 i,uint32 cur,std::list<Unit*> &TagUnitMap);
 
         Unit* SelectMagnetTarget();
-        bool CheckTarget( Unit* target, uint32 eff );
+        std::pair <bool,Unit *> m_magnetPair;
+        bool CheckTarget( Unit* target, uint32 eff, bool hitPhase );
 
         void SendCastResult(uint8 result);
         void SendSpellStart();
@@ -502,6 +519,10 @@ class Spell
         void DoAllEffectOnTarget(GOTargetInfo *target);
         void DoAllEffectOnTarget(ItemTargetInfo *target);
         bool IsAliveUnitPresentInTargetList();
+        void SearchAreaTarget(std::list<Unit*> &data, float radius, const uint32 &type,
+            SpellTargets TargetType, uint32 entry = 0);
+        Unit* SearchNearbyTarget(float radius, SpellTargets TargetType, uint32 entry = 0);
+        void SearchChainTarget(std::list<Unit*> &data, Unit* pUnitTarget, float max_range, uint32 unMaxTargets);
         // -------------------------------------------
 
         //List For Triggered Spells
@@ -523,81 +544,30 @@ class Spell
         SpellEntry const* m_triggeredByAuraSpell;
 };
 
-enum ReplenishType
+namespace Trinity
 {
-    REPLENISH_UNDEFINED = 0,
-    REPLENISH_HEALTH    = 20,
-    REPLENISH_MANA      = 21,
-    REPLENISH_RAGE      = 22
-};
-
-enum SpellTargets
-{
-    SPELL_TARGETS_HOSTILE,
-    SPELL_TARGETS_NOT_FRIENDLY,
-    SPELL_TARGETS_NOT_HOSTILE,
-    SPELL_TARGETS_FRIENDLY,
-    SPELL_TARGETS_AOE_DAMAGE
-};
-
-namespace MaNGOS
-{
-    struct MANGOS_DLL_DECL SpellNotifierPlayer
-    {
-        std::list<Unit*> &i_data;
-        Spell &i_spell;
-        const uint32& i_index;
-        float i_radius;
-        Unit* i_originalCaster;
-
-        SpellNotifierPlayer(Spell &spell, std::list<Unit*> &data, const uint32 &i, float radius)
-            : i_data(data), i_spell(spell), i_index(i), i_radius(radius)
-        {
-            i_originalCaster = i_spell.GetOriginalCaster();
-        }
-
-        void Visit(PlayerMapType &m)
-        {
-            if(!i_originalCaster)
-                return;
-
-            for(PlayerMapType::iterator itr=m.begin(); itr != m.end(); ++itr)
-            {
-                Player * pPlayer = itr->getSource();
-                if( !pPlayer->isAlive() || pPlayer->isInFlight())
-                    continue;
-
-                if( i_originalCaster->IsFriendlyTo(pPlayer) )
-                    continue;
-
-                if( pPlayer->GetDistance(i_spell.m_targets.m_destX, i_spell.m_targets.m_destY, i_spell.m_targets.m_destZ) < i_radius )
-                    i_data.push_back(pPlayer);
-            }
-        }
-        template<class SKIP> void Visit(GridRefManager<SKIP> &) {}
-    };
-
-    struct MANGOS_DLL_DECL SpellNotifierCreatureAndPlayer
+    struct TRINITY_DLL_DECL SpellNotifierCreatureAndPlayer
     {
         std::list<Unit*> *i_data;
         Spell &i_spell;
         const uint32& i_push_type;
         float i_radius;
         SpellTargets i_TargetType;
-        Unit* i_originalCaster;
+        Unit* i_caster;
+        uint32 i_entry;
 
         SpellNotifierCreatureAndPlayer(Spell &spell, std::list<Unit*> &data, float radius, const uint32 &type,
-            SpellTargets TargetType = SPELL_TARGETS_NOT_FRIENDLY)
-            : i_data(&data), i_spell(spell), i_push_type(type), i_radius(radius), i_TargetType(TargetType)
+            SpellTargets TargetType = SPELL_TARGETS_AOE_DAMAGE, uint32 entry = 0)
+            : i_data(&data), i_spell(spell), i_push_type(type), i_radius(radius), i_TargetType(TargetType), i_entry(entry)
         {
-            i_originalCaster = spell.GetOriginalCaster();
+            i_caster = spell.GetCaster();
         }
 
         template<class T> inline void Visit(GridRefManager<T>  &m)
         {
             assert(i_data);
 
-            if(!i_originalCaster)
+            if(!i_caster)
                 return;
 
             for(typename GridRefManager<T>::iterator itr = m.begin(); itr != m.end(); ++itr)
@@ -607,30 +577,18 @@ namespace MaNGOS
 
                 switch (i_TargetType)
                 {
-                    case SPELL_TARGETS_HOSTILE:
-                        if (!itr->getSource()->isTargetableForAttack() || !i_originalCaster->IsHostileTo( itr->getSource() ))
-                            continue;
-                        break;
-                    case SPELL_TARGETS_NOT_FRIENDLY:
-                        if (!itr->getSource()->isTargetableForAttack() || i_originalCaster->IsFriendlyTo( itr->getSource() ))
-                            continue;
-                        break;
-                    case SPELL_TARGETS_NOT_HOSTILE:
-                        if (!itr->getSource()->isTargetableForAttack() || i_originalCaster->IsHostileTo( itr->getSource() ))
-                            continue;
-                        break;
                     case SPELL_TARGETS_FRIENDLY:
-                        if (!itr->getSource()->isTargetableForAttack() || !i_originalCaster->IsFriendlyTo( itr->getSource() ))
+                        if (!itr->getSource()->isAttackableByAOE() || !i_caster->IsFriendlyTo( itr->getSource() ))
                             continue;
                         break;
                     case SPELL_TARGETS_AOE_DAMAGE:
                     {
                         if(itr->getSource()->GetTypeId()==TYPEID_UNIT && ((Creature*)itr->getSource())->isTotem())
                             continue;
-                        if(!itr->getSource()->isTargetableForAttack())
+                        if(!itr->getSource()->isAttackableByAOE())
                             continue;
 
-                        Unit* check = i_originalCaster->GetCharmerOrOwnerOrSelf();
+                        Unit* check = i_caster->GetCharmerOrOwnerOrSelf();
 
                         if( check->GetTypeId()==TYPEID_PLAYER )
                         {
@@ -642,31 +600,35 @@ namespace MaNGOS
                             if (!check->IsHostileTo( itr->getSource() ))
                                 continue;
                         }
-                    }
-                    break;
+                    }break;
+                    case SPELL_TARGETS_ENTRY:
+                    {
+                        if(itr->getSource()->GetTypeId()!=TYPEID_UNIT || itr->getSource()->GetEntry()!= i_entry)
+                            continue;
+                    }break;
                     default: continue;
                 }
 
                 switch(i_push_type)
                 {
                     case PUSH_IN_FRONT:
-                        if(i_spell.GetCaster()->isInFront((Unit*)(itr->getSource()), i_radius, 2*M_PI/3 ))
+                        if(i_caster->isInFront((Unit*)(itr->getSource()), i_radius, M_PI/3 ))
                             i_data->push_back(itr->getSource());
                         break;
                     case PUSH_IN_BACK:
-                        if(i_spell.GetCaster()->isInBack((Unit*)(itr->getSource()), i_radius, 2*M_PI/3 ))
+                        if(i_caster->isInBack((Unit*)(itr->getSource()), i_radius, M_PI/3 ))
+                            i_data->push_back(itr->getSource());
+                        break;
+                    case PUSH_IN_LINE:
+                        if(i_caster->isInLine((Unit*)(itr->getSource()), i_radius ))
                             i_data->push_back(itr->getSource());
                         break;
                     case PUSH_SELF_CENTER:
-                        if(i_spell.GetCaster()->IsWithinDistInMap((Unit*)(itr->getSource()), i_radius))
+                        if(i_caster->IsWithinDistInMap((Unit*)(itr->getSource()), i_radius))
                             i_data->push_back(itr->getSource());
                         break;
                     case PUSH_DEST_CENTER:
                         if((itr->getSource()->GetDistance(i_spell.m_targets.m_destX, i_spell.m_targets.m_destY, i_spell.m_targets.m_destZ) < i_radius ))
-                            i_data->push_back(itr->getSource());
-                        break;
-                    case PUSH_TARGET_CENTER:
-                        if(i_spell.m_targets.getUnitTarget()->IsWithinDistInMap((Unit*)(itr->getSource()), i_radius))
                             i_data->push_back(itr->getSource());
                         break;
                 }

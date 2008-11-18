@@ -1,5 +1,7 @@
-/*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+/* 
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,19 +10,24 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOSSERVER_COMMON_H
-#define MANGOSSERVER_COMMON_H
+#ifndef TRINITYCORE_COMMON_H
+#define TRINITYCORE_COMMON_H
 
 // config.h needs to be included 1st
+// TODO this thingy looks like hack ,but its not, need to
+// make separate header however, because It makes mess here.
 #ifdef HAVE_CONFIG_H
+// Remove Some things that we will define 
+// This is in case including another config.h 
+// before trinity config.h 
 #ifdef PACKAGE
 #undef PACKAGE
 #endif //PACKAGE
@@ -75,9 +82,6 @@
 #pragma warning(disable:4005)
 #endif                                                      // __SHOW_STUPID_WARNINGS__
 #endif                                                      // __GNUC__
-
-// must be the first thing to include for it to work
-#include "MemoryLeaks.h"
 
 #include "Utilities/UnorderedMap.h"
 #include <stdio.h>
@@ -142,7 +146,7 @@
 #define stricmp strcasecmp
 #define strnicmp strncasecmp
 #define I64FMT "%016llX"
-#define I64FMTD "%llu"
+#define I64FMTD "%I64u"
 #define SI64FMTD "%lld"
 #endif
 
@@ -166,7 +170,7 @@ enum AccountTypes
     SEC_MODERATOR      = 1,
     SEC_GAMEMASTER     = 2,
     SEC_ADMINISTRATOR  = 3,
-    SEC_CONSOLE        = 4                                  // must be always last in list, accounts must have less security level always also
+	SEC_CONSOLE        = 4                                  // must be always last in list, accounts must have less security level always also
 };
 
 enum LocaleConstant

@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,10 +28,10 @@
 #include "Transports.h"
 #include "ObjectAccessor.h"
 
-using namespace MaNGOS;
+using namespace Trinity;
 
 void
-MaNGOS::PlayerNotifier::Visit(PlayerMapType &m)
+Trinity::PlayerNotifier::Visit(PlayerMapType &m)
 {
     for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
     {
@@ -38,6 +40,10 @@ MaNGOS::PlayerNotifier::Visit(PlayerMapType &m)
 
         iter->getSource()->UpdateVisibilityOf(&i_player);
         i_player.UpdateVisibilityOf(iter->getSource());
+
+        if (!i_player.GetSharedVisionList().empty())
+            for (SharedVisionList::const_iterator it = i_player.GetSharedVisionList().begin(); it != i_player.GetSharedVisionList().end(); ++it)
+                (*it)->UpdateVisibilityOf(iter->getSource());
     }
 }
 
@@ -91,7 +97,7 @@ VisibleNotifier::Notify()
     {
         i_player.m_clientGUIDs.erase(*itr);
 
-        #ifdef MANGOS_DEBUG
+        #ifdef TRINITY_DEBUG
         if((sLog.getLogFilter() & LOG_FILTER_VISIBILITY_CHANGES)==0)
             sLog.outDebug("Object %u (Type: %u) is out of range (no in active cells set) now for player %u",GUID_LOPART(*itr),GuidHigh2TypeId(GUID_HIPART(*itr)),i_player.GetGUIDLow());
         #endif
@@ -137,54 +143,94 @@ VisibleNotifier::Notify()
             i_player.SendAuraDurationsForTarget((Unit*)(*vItr));
 }
 
-void
-MessageDeliverer::Visit(PlayerMapType &m)
+void 
+Deliverer::Visit(PlayerMapType &m)
 {
-    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    for (PlayerMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
-        if( i_toSelf || iter->getSource() != &i_player)
+        if (!i_dist || iter->getSource()->GetDistance(&i_source) <= i_dist)
         {
-            if(WorldSession* session = iter->getSource()->GetSession())
-                session->SendPacket(i_message);
+            // Send packet to all who are sharing the player's vision
+            if (!iter->getSource()->GetSharedVisionList().empty())
+            {
+                SharedVisionList::const_iterator it = iter->getSource()->GetSharedVisionList().begin();
+                for ( ; it != iter->getSource()->GetSharedVisionList().end(); ++it)
+                    SendPacket(*it);
+            }
+
+            VisitObject(iter->getSource());
+        }
+    }
+}
+
+void 
+Deliverer::Visit(CreatureMapType &m)
+{
+    for (CreatureMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
+    {
+        if (!i_dist || iter->getSource()->GetDistance(&i_source) <= i_dist)
+        {
+            // Send packet to all who are sharing the creature's vision
+            if (!iter->getSource()->GetSharedVisionList().empty())
+            {
+                SharedVisionList::const_iterator it = iter->getSource()->GetSharedVisionList().begin();
+                for ( ; it != iter->getSource()->GetSharedVisionList().end(); ++it)
+                    SendPacket(*it);
+            }
         }
     }
 }
 
 void
-ObjectMessageDeliverer::Visit(PlayerMapType &m)
+Deliverer::Visit(DynamicObjectMapType &m)
 {
-    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    for (DynamicObjectMapType::iterator iter = m.begin(); iter != m.end(); ++iter)
     {
-        if(WorldSession* session = iter->getSource()->GetSession())
+        if (IS_PLAYER_GUID(iter->getSource()->GetCasterGUID()))
+        {
+            // Send packet back to the caster if the caster has vision of dynamic object
+            Player* caster = (Player*)iter->getSource()->GetCaster();
+            if (caster->GetUInt64Value(PLAYER_FARSIGHT) == iter->getSource()->GetGUID() &&
+                (!i_dist || iter->getSource()->GetDistance(&i_source) <= i_dist))
+                SendPacket(caster);
+        }
+    }
+}
+
+void
+Deliverer::SendPacket(Player* plr)
+{
+    if (!plr)
+        return;
+
+    // Don't send the packet to self if not supposed to
+    if (!i_toSelf && plr == &i_source)
+        return;
+
+    // Don't send the packet to possesor if not supposed to
+    if (!i_toPossessor && plr->isPossessing() && plr->GetCharmGUID() == i_source.GetGUID())
+        return;
+
+    if (plr_list.find(plr->GetGUID()) == plr_list.end())
+    {
+        if (WorldSession* session = plr->GetSession())
             session->SendPacket(i_message);
+        plr_list.insert(plr->GetGUID());
     }
 }
 
 void
-MessageDistDeliverer::Visit(PlayerMapType &m)
+MessageDeliverer::VisitObject(Player* plr)
 {
-    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
-    {
-        if( (i_toSelf || iter->getSource() != &i_player ) &&
-            (!i_ownTeamOnly || iter->getSource()->GetTeam() == i_player.GetTeam() ) &&
-            (!i_dist || iter->getSource()->GetDistance(&i_player) <= i_dist) )
-        {
-            if(WorldSession* session = iter->getSource()->GetSession())
-                session->SendPacket(i_message);
-        }
-    }
+    SendPacket(plr);
 }
 
 void
-ObjectMessageDistDeliverer::Visit(PlayerMapType &m)
+MessageDistDeliverer::VisitObject(Player* plr)
 {
-    for(PlayerMapType::iterator iter=m.begin(); iter != m.end(); ++iter)
+    if( !i_ownTeamOnly || (i_source.GetTypeId() == TYPEID_PLAYER && plr->GetTeam() == ((Player&)i_source).GetTeam()) )
     {
-        if( !i_dist || iter->getSource()->GetDistance(&i_object) <= i_dist )
-        {
-            if(WorldSession* session = iter->getSource()->GetSession())
-                session->SendPacket(i_message);
-        }
+        SendPacket(plr);
     }
 }
 

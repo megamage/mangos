@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -39,7 +41,7 @@ Bag::~Bag()
 {
     for(int i = 0; i < MAX_BAG_SIZE; ++i)
         if (m_bagslot[i])
-            delete m_bagslot[i];
+             delete m_bagslot[i];
 }
 
 void Bag::AddToWorld()
@@ -69,7 +71,7 @@ bool Bag::Create(uint32 guidlow, uint32 itemid, Player const* owner)
 
     Object::_Create( guidlow, 0, HIGHGUID_CONTAINER );
 
-    SetEntry(itemid);
+    SetUInt32Value(OBJECT_FIELD_ENTRY, itemid);
     SetFloatValue(OBJECT_FIELD_SCALE_X, 1.0f);
 
     SetUInt64Value(ITEM_FIELD_OWNER, owner ? owner->GetGUID() : 0);
@@ -83,7 +85,7 @@ bool Bag::Create(uint32 guidlow, uint32 itemid, Player const* owner)
     // Setting the number of Slots the Container has
     SetUInt32Value(CONTAINER_FIELD_NUM_SLOTS, itemProto->ContainerSlots);
 
-    // Cleaning 20 slots
+    // Cleanning 20 slots
     for (uint8 i = 0; i < MAX_BAG_SIZE; i++)
     {
         SetUInt64Value(CONTAINER_FIELD_SLOT_1 + (i*2), 0);
@@ -211,7 +213,6 @@ uint8 Bag::GetSlotByItemGUID(uint64 guid) const
         if(m_bagslot[i] != 0)
             if(m_bagslot[i]->GetGUID() == guid)
                 return i;
-
     return NULL_SLOT;
 }
 
@@ -219,6 +220,6 @@ Item* Bag::GetItemByPos( uint8 slot ) const
 {
     if( slot < GetBagSize() )
         return m_bagslot[slot];
-
+        
     return NULL;
 }

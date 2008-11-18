@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +38,7 @@
 #include "MapManager.h"
 #include "ObjectAccessor.h"
 #include "BattleGroundMgr.h"
+#include "OutdoorPvPMgr.h"
 #include "Language.h"                                       // for CMSG_CANCEL_MOUNT_AURA handler
 #include "Chat.h"
 #include "SocialMgr.h"
@@ -95,7 +98,7 @@ void WorldSession::SendPacket(WorldPacket const* packet)
     if (!m_Socket)
         return;
 
-    #ifdef MANGOS_DEBUG
+    #ifdef TRINITY_DEBUG
 
     // Code for network use statistic
     static uint64 sendPacketCount = 0;
@@ -302,6 +305,8 @@ void WorldSession::LogoutPlayer(bool Save)
         if(_player->InBattleGround())
             _player->LeaveBattleground();
 
+        sOutdoorPvPMgr.HandlePlayerLeaveZone(_player,_player->GetZoneId());
+
         for (int i=0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; i++)
         {
             if(int32 bgTypeId = _player->GetBattleGroundQueueId(i))
@@ -360,11 +365,18 @@ void WorldSession::LogoutPlayer(bool Save)
         if(_player->GetGroup() && !_player->GetGroup()->isRaidGroup() && m_Socket)
             _player->RemoveFromGroup();
 
+        // Unpossess the current possessed unit of player
+        if (_player->isPossessing())
+            _player->RemovePossess(false);
+
+        // Remove any possession of this player on logout
+        _player->UnpossessSelf(false);
+
         ///- Remove the player from the world
         // the player may not be in the world when logging out
         // e.g if he got disconnected during a transfer to another map
         // calls to GetMap in this case may cause crashes
-        if(_player->IsInWorld()) _player->GetMap()->Remove(_player, false);
+        if(_player->IsInWorld()) MapManager::Instance().GetMap(_player->GetMapId(), _player)->Remove(_player, false);
         // RemoveFromWorld does cleanup that requires the player to be in the accessor
         ObjectAccessor::Instance().RemoveObject(_player);
 
@@ -443,7 +455,7 @@ void WorldSession::SendNotification(const char *format,...)
 
 void WorldSession::SendNotification(int32 string_id,...)
 {
-    char const* format = GetMangosString(string_id);
+    char const* format = GetTrinityString(string_id);
     if(format)
     {
         va_list ap;
@@ -459,9 +471,9 @@ void WorldSession::SendNotification(int32 string_id,...)
     }
 }
 
-const char * WorldSession::GetMangosString( int32 entry ) const
+const char * WorldSession::GetTrinityString( int32 entry ) const
 {
-    return objmgr.GetMangosString(entry,GetSessionDbLocaleIndex());
+    return objmgr.GetTrinityString(entry,GetSessionDbLocaleIndex());
 }
 
 void WorldSession::Handle_NULL( WorldPacket& recvPacket )
@@ -473,7 +485,7 @@ void WorldSession::Handle_NULL( WorldPacket& recvPacket )
 
 void WorldSession::Handle_EarlyProccess( WorldPacket& recvPacket )
 {
-    sLog.outError( "SESSION: received opcode %s (0x%.4X) that must be proccessed in WorldSocket::OnRead",
+    sLog.outError( "SESSION: received opcode %s (0x%.4X) that must be processed in WorldSocket::OnRead",
         LookupOpcodeName(recvPacket.GetOpcode()),
         recvPacket.GetOpcode());
 }

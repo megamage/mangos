@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,9 +40,11 @@
 #include "ObjectAccessor.h"
 #include "Object.h"
 #include "BattleGround.h"
+#include "OutdoorPvP.h"
 #include "SpellAuras.h"
 #include "Pet.h"
 #include "SocialMgr.h"
+#include "CellImpl.h"
 
 void WorldSession::HandleRepopRequestOpcode( WorldPacket & /*recv_data*/ )
 {
@@ -255,8 +259,9 @@ void WorldSession::HandleWhoOpcode( WorldPacket & recv_data )
         data << uint8(0);                                   // new 2.4.0
         data << uint32( pzoneid );                          // player zone id
 
-        // 49 is maximum player count sent to client
-        if ((++clientcount) == 49)
+        // 49 is maximum player count sent to client - can be overridden
+        // through config, but is unstable
+        if ((++clientcount) == sWorld.getConfig(CONFIG_MAX_WHO))
             break;
     }
 
@@ -284,6 +289,7 @@ void WorldSession::HandleLogoutRequestOpcode( WorldPacket & /*recv_data*/ )
     //Can not logout if...
     if( GetPlayer()->isInCombat() ||                        //...is in combat
         GetPlayer()->duel         ||                        //...is in Duel
+        GetPlayer()->HasAura(9454,0)         ||             //...is frozen by GM via freeze command
                                                             //...is jumping ...is falling
         GetPlayer()->HasUnitMovementFlag(MOVEMENTFLAG_JUMPING | MOVEMENTFLAG_FALLING))
     {
@@ -296,8 +302,8 @@ void WorldSession::HandleLogoutRequestOpcode( WorldPacket & /*recv_data*/ )
         return;
     }
 
-    //instant logout in taverns/cities or on taxi
-    if(GetPlayer()->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) || GetPlayer()->isInFlight())
+    //instant logout in taverns/cities or on taxi or if its enabled in Trinityd.conf
+    if(GetPlayer()->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) || GetPlayer()->isInFlight() || sWorld.getConfig(CONFIG_INSTANT_LOGOUT))
     {
         LogoutPlayer(true);
         return;
@@ -379,6 +385,11 @@ void WorldSession::HandleTogglePvP( WorldPacket & recv_data )
         if(!GetPlayer()->pvpInfo.inHostileArea && GetPlayer()->IsPvP())
             GetPlayer()->pvpInfo.endTimer = time(NULL);     // start toggle-off
     }
+
+    if(OutdoorPvP * pvp = _player->GetOutdoorPvP())
+    {
+        pvp->HandlePlayerActivityChanged(_player);
+    }
 }
 
 void WorldSession::HandleZoneUpdateOpcode( WorldPacket & recv_data )
@@ -390,10 +401,9 @@ void WorldSession::HandleZoneUpdateOpcode( WorldPacket & recv_data )
 
     sLog.outDetail("WORLD: Recvd ZONE_UPDATE: %u", newZone);
 
-    if(newZone != _player->GetZoneId())
-        GetPlayer()->SendInitWorldStates();                 // only if really enters to new zone, not just area change, works strange...
-
     GetPlayer()->UpdateZone(newZone);
+
+    GetPlayer()->SendInitWorldStates(true,newZone);
 }
 
 void WorldSession::HandleSetTargetOpcode( WorldPacket & recv_data )
@@ -458,7 +468,7 @@ void WorldSession::HandleAddFriendOpcode( WorldPacket & recv_data )
 
     sLog.outDebug( "WORLD: Received CMSG_ADD_FRIEND" );
 
-    std::string friendName = GetMangosString(LANG_FRIEND_IGNORE_UNKNOWN);
+    std::string friendName = GetTrinityString(LANG_FRIEND_IGNORE_UNKNOWN);
     std::string friendNote;
 
     recv_data >> friendName;
@@ -548,7 +558,7 @@ void WorldSession::HandleAddIgnoreOpcode( WorldPacket & recv_data )
 
     sLog.outDebug( "WORLD: Received CMSG_ADD_IGNORE" );
 
-    std::string IgnoreName = GetMangosString(LANG_FRIEND_IGNORE_UNKNOWN);
+    std::string IgnoreName = GetTrinityString(LANG_FRIEND_IGNORE_UNKNOWN);
 
     recv_data >> IgnoreName;
 
@@ -660,6 +670,10 @@ void WorldSession::HandleCorpseReclaimOpcode(WorldPacket &recv_data)
     sLog.outDetail("WORLD: Received CMSG_RECLAIM_CORPSE");
     if (GetPlayer()->isAlive())
         return;
+
+    if (BattleGround * bg = _player->GetBattleGround())
+        if(bg->isArena())
+            return;
 
     // body not released yet
     if(!GetPlayer()->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
@@ -823,6 +837,12 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
         return;
     }
 
+    if(OutdoorPvP * pvp = GetPlayer()->GetOutdoorPvP())
+    {
+        if(pvp->HandleAreaTrigger(_player, Trigger_ID))
+            return;
+    }
+
     // NULL if all values default (non teleport trigger)
     AreaTrigger const* at = objmgr.GetAreaTrigger(Trigger_ID);
     if(!at)
@@ -866,13 +886,13 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
         {
             // TODO: all this is probably wrong
             if(missingItem)
-                SendAreaTriggerMessage(GetMangosString(LANG_LEVEL_MINREQUIRED_AND_ITEM), at->requiredLevel, objmgr.GetItemPrototype(missingItem)->Name1);
+                SendAreaTriggerMessage(GetTrinityString(LANG_LEVEL_MINREQUIRED_AND_ITEM), at->requiredLevel, objmgr.GetItemPrototype(missingItem)->Name1);
             else if(missingKey)
                 GetPlayer()->SendTransferAborted(at->target_mapId, TRANSFER_ABORT_DIFFICULTY2);
             else if(missingQuest)
                 SendAreaTriggerMessage(at->requiredFailedText.c_str());
             else if(missingLevel)
-                SendAreaTriggerMessage(GetMangosString(LANG_LEVEL_MINREQUIRED), missingLevel);
+                SendAreaTriggerMessage(GetTrinityString(LANG_LEVEL_MINREQUIRED), missingLevel);
             return;
         }
     }
@@ -953,7 +973,7 @@ void WorldSession::HandleMoveTimeSkippedOpcode( WorldPacket & /*recv_data*/ )
         sLog.outDebug( "WORLD: CMSG_MOVE_TIME_SKIPPED" );
 
         /// TODO
-        must be need use in mangos
+        must be need use in Trinity
         We substract server Lags to move time ( AntiLags )
         for exmaple
         GetPlayer()->ModifyLastMoveTime( -int32(time_skipped) );
@@ -1372,21 +1392,33 @@ void WorldSession::HandleFarSightOpcode( WorldPacket & recv_data )
     sLog.outDebug("WORLD: CMSG_FAR_SIGHT");
     //recv_data.hexlike();
 
-    uint8 unk;
-    recv_data >> unk;
+    uint8 apply;
+    recv_data >> apply;
 
-    switch(unk)
+    CellPair pair;
+
+    switch(apply)
     {
         case 0:
-            //WorldPacket data(SMSG_CLEAR_FAR_SIGHT_IMMEDIATE, 0)
-            //SendPacket(&data);
-            //_player->SetUInt64Value(PLAYER_FARSIGHT, 0);
-            sLog.outDebug("Removed FarSight from player %u", _player->GetGUIDLow());
+            _player->SetFarsightVision(false);
+            pair = Trinity::ComputeCellPair(_player->GetPositionX(), _player->GetPositionY());
+            sLog.outDebug("Player %u set vision to himself", _player->GetGUIDLow());
             break;
         case 1:
-            sLog.outDebug("Added FarSight " I64FMTD " to player %u", _player->GetUInt64Value(PLAYER_FARSIGHT), _player->GetGUIDLow());
+            _player->SetFarsightVision(true);
+            if (WorldObject* obj = _player->GetFarsightTarget())
+                pair = Trinity::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
+            else
+                return;
+            sLog.outDebug("Player %u set vision to farsight target " I64FMTD ".", _player->GetGUIDLow(), _player->GetUInt64Value(PLAYER_FARSIGHT));
             break;
+        default:
+            sLog.outDebug("Unhandled mode in CMSG_FAR_SIGHT: %u", apply);
+            return;
     }
+    // Update visibility after vision change
+    Cell cell(pair);
+    GetPlayer()->GetMap()->UpdateObjectsVisibilityFor(_player, cell, pair);
 }
 
 void WorldSession::HandleChooseTitleOpcode( WorldPacket & recv_data )

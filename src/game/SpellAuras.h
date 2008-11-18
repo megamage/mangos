@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,15 +10,15 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#ifndef MANGOS_SPELLAURAS_H
-#define MANGOS_SPELLAURAS_H
+#ifndef TRINITY_SPELLAURAS_H
+#define TRINITY_SPELLAURAS_H
 
 #include "SpellAuraDefines.h"
 
@@ -55,11 +57,11 @@ typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);
 //      (percent auras, stats mods, etc)
 // Second rule: Code must be guarded by if(Real) check if it modifies object state (start/stop attack, send packets to client, etc)
 //
-// Other case choice: each code line moved under if(Real) check is mangos speedup,
-//      each setting object update field code line moved under if(Real) check is significant mangos speedup, and less server->client data sends
-//      each packet sending code moved under if(Real) check is _large_ mangos speedup, and lot less server->client data sends
+// Other case choice: each code line moved under if(Real) check is Trinity speedup,
+//      each setting object update field code line moved under if(Real) check is significant Trinity speedup, and less server->client data sends
+//      each packet sending code moved under if(Real) check is _large_ Trinity speedup, and lot less server->client data sends
 
-class MANGOS_DLL_SPEC Aura
+class TRINITY_DLL_SPEC Aura
 {
     friend Aura* CreateAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster, Item* castItem);
 
@@ -183,12 +185,15 @@ class MANGOS_DLL_SPEC Aura
         void HandleAuraAllowFlight(bool Apply, bool Real);
         void HandleModRating(bool apply, bool Real);
         void HandleModTargetResistance(bool apply, bool Real);
+        void HandleAuraAttackPowerAttacker(bool apply, bool Real);
         void HandleAuraModAttackPowerPercent(bool apply, bool Real);
         void HandleAuraModRangedAttackPowerPercent(bool apply, bool Real);
         void HandleAuraModRangedAttackPowerOfStatPercent(bool apply, bool Real);
         void HandleSpiritOfRedemption(bool apply, bool Real);
+        void HandleAuraHealingPct(bool apply, bool Real);
         void HandleModManaRegen(bool apply, bool Real);
         void HandleComprehendLanguage(bool apply, bool Real);
+        void HandleAuraHealing(bool apply, bool Real);
         void HandleShieldBlockValue(bool apply, bool Real);
         void HandleModSpellCritChanceShool(bool apply, bool Real);
         void HandleAuraRetainComboPoints(bool apply, bool Real);
@@ -248,7 +253,7 @@ class MANGOS_DLL_SPEC Aura
         {
             uint8 slot = GetAuraSlot();
 
-            // only aura in slot with charges and without stack limitation
+            // only aura inslot with charges and without stack limitation
             if (slot < MAX_AURAS && m_procCharges >= 1 && GetSpellProto()->StackAmount==0)
                 SetAuraApplication(slot, m_procCharges - 1);
         }
@@ -280,8 +285,9 @@ class MANGOS_DLL_SPEC Aura
         void SetRemoveMode(AuraRemoveMode mode) { m_removeMode = mode; }
 
         int32 m_procCharges;
+        void SetAuraProcCharges(int32 charges) { m_procCharges = charges; }
 
-        virtual Unit* GetTriggerTarget() const { return m_target; }
+        Unit* GetTriggerTarget() const;
 
         // add/remove SPELL_AURA_MOD_SHAPESHIFT (36) linked auras
         void HandleShapeshiftBoosts(bool apply);
@@ -336,7 +342,7 @@ class MANGOS_DLL_SPEC Aura
         void SetAuraApplication(uint32 slot, int8 count);
 };
 
-class MANGOS_DLL_SPEC AreaAura : public Aura
+class TRINITY_DLL_SPEC AreaAura : public Aura
 {
     public:
         AreaAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster = NULL, Item* castItem = NULL);
@@ -347,25 +353,12 @@ class MANGOS_DLL_SPEC AreaAura : public Aura
         AreaAuraType m_areaAuraType;
 };
 
-class MANGOS_DLL_SPEC PersistentAreaAura : public Aura
+class TRINITY_DLL_SPEC PersistentAreaAura : public Aura
 {
     public:
         PersistentAreaAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster = NULL, Item* castItem = NULL);
         ~PersistentAreaAura();
         void Update(uint32 diff);
-};
-
-class MANGOS_DLL_SPEC SingleEnemyTargetAura : public Aura
-{
-    friend Aura* CreateAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster, Item* castItem);
-
-    public:
-        ~SingleEnemyTargetAura();
-        Unit* GetTriggerTarget() const;
-
-    protected:
-        SingleEnemyTargetAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster  = NULL, Item* castItem = NULL);
-        uint64 m_casters_target_guid;
 };
 
 Aura* CreateAura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster = NULL, Item* castItem = NULL);

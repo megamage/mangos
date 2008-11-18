@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -92,11 +94,11 @@ void WorldSession::SendNameQueryOpcodeFromDBCallBack(QueryResult *result, uint32
     std::string name = fields[1].GetCppString();
     uint32 field     = 0;
     if(name == "")
-        name         = session->GetMangosString(LANG_NON_EXIST_CHARACTER);
+        name         = session->GetTrinityString(LANG_NON_EXIST_CHARACTER);
     else
         field        = fields[2].GetUInt32();
 
-                                                            // guess size
+                                                        // guess size
     WorldPacket data( SMSG_NAME_QUERY_RESPONSE, (8+1+4+4+4+10) );
     data << MAKE_NEW_GUID(guid, 0, HIGHGUID_PLAYER);
     data << name;
@@ -165,9 +167,9 @@ void WorldSession::HandleCreatureQueryOpcode( WorldPacket & recv_data )
             CreatureLocale const *cl = objmgr.GetCreatureLocale(entry);
             if (cl)
             {
-                if (cl->Name.size() > size_t(loc_idx) && !cl->Name[loc_idx].empty())
+                if (cl->Name.size() > loc_idx && !cl->Name[loc_idx].empty())
                     Name = cl->Name[loc_idx];
-                if (cl->SubName.size() > size_t(loc_idx) && !cl->SubName[loc_idx].empty())
+                if (cl->SubName.size() > loc_idx && !cl->SubName[loc_idx].empty())
                     SubName = cl->SubName[loc_idx];
             }
         }
@@ -179,16 +181,16 @@ void WorldSession::HandleCreatureQueryOpcode( WorldPacket & recv_data )
         data << uint8(0) << uint8(0) << uint8(0);           // name2, name3, name4, always empty
         data << SubName;
         data << ci->IconName;                               // "Directions" for guard, string for Icons 2.3.0
-        data << (uint32)ci->type_flags;                     // flags          wdbFeild7=wad flags1
+        data << (uint32)ci->type_flags;                          // flags          wdbFeild7=wad flags1
         data << (uint32)ci->type;
         data << (uint32)ci->family;                         // family         wdbFeild9
         data << (uint32)ci->rank;                           // rank           wdbFeild10
         data << (uint32)0;                                  // unknown        wdbFeild11
         data << (uint32)ci->PetSpellDataId;                 // Id from CreatureSpellData.dbc    wdbField12
-        data << (uint32)ci->DisplayID_A;                    // modelid_male1
-        data << (uint32)ci->DisplayID_H;                    // modelid_female1 ?
-        data << (uint32)ci->DisplayID_A2;                   // modelid_male2 ?
-        data << (uint32)ci->DisplayID_H2;                   // modelid_femmale2 ?
+        data << (uint32)ci->Modelid1;                       // Modelid1
+        data << (uint32)ci->Modelid2;                       // Modelid2
+        data << (uint32)ci->Modelid3;                       // Modelid3
+        data << (uint32)ci->Modelid4;                       // Modelid4
         data << (float)1.0f;                                // unk
         data << (float)1.0f;                                // unk
         data << (uint8)ci->RacialLeader;
@@ -233,9 +235,9 @@ void WorldSession::HandleGameObjectQueryOpcode( WorldPacket & recv_data )
             GameObjectLocale const *gl = objmgr.GetGameObjectLocale(entryID);
             if (gl)
             {
-                if (gl->Name.size() > size_t(loc_idx) && !gl->Name[loc_idx].empty())
+                if (gl->Name.size() > loc_idx && !gl->Name[loc_idx].empty())
                     Name = gl->Name[loc_idx];
-                if (gl->CastBarCaption.size() > size_t(loc_idx) && !gl->CastBarCaption[loc_idx].empty())
+                if (gl->CastBarCaption.size() > loc_idx && !gl->CastBarCaption[loc_idx].empty())
                     CastBarCaption = gl->CastBarCaption[loc_idx];
             }
         }
@@ -250,7 +252,6 @@ void WorldSession::HandleGameObjectQueryOpcode( WorldPacket & recv_data )
         data << CastBarCaption;                             // 2.0.3, string. Text will appear in Cast Bar when using GO (ex: "Collecting")
         data << uint8(0);                                   // 2.0.3, probably string
         data.append(info->raw.data,24);
-        data << float(info->size);                          // go size
         SendPacket( &data );
         sLog.outDebug(  "WORLD: Sent CMSG_GAMEOBJECT_QUERY " );
     }
@@ -345,9 +346,9 @@ void WorldSession::HandleNpcTextQueryOpcode( WorldPacket & recv_data )
             {
                 for (int i=0;i<8;i++)
                 {
-                    if (nl->Text_0[i].size() > size_t(loc_idx) && !nl->Text_0[i][loc_idx].empty())
+                    if (nl->Text_0[i].size() > loc_idx && !nl->Text_0[i][loc_idx].empty())
                         Text_0[i]=nl->Text_0[i][loc_idx];
-                    if (nl->Text_1[i].size() > size_t(loc_idx) && !nl->Text_1[i][loc_idx].empty())
+                    if (nl->Text_1[i].size() > loc_idx && !nl->Text_1[i][loc_idx].empty())
                         Text_1[i]=nl->Text_1[i][loc_idx];
                 }
             }
@@ -417,7 +418,7 @@ void WorldSession::HandlePageQueryOpcode( WorldPacket & recv_data )
                 PageTextLocale const *pl = objmgr.GetPageTextLocale(pageID);
                 if (pl)
                 {
-                    if (pl->Text.size() > size_t(loc_idx) && !pl->Text[loc_idx].empty())
+                    if (pl->Text.size() > loc_idx && !pl->Text[loc_idx].empty())
                         Text = pl->Text[loc_idx];
                 }
             }

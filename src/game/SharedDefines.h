@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,16 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOS_SHAREDDEFINES_H
-#define MANGOS_SHAREDDEFINES_H
+#ifndef TRINITY_SHAREDDEFINES_H
+#define TRINITY_SHAREDDEFINES_H
 
 #include "Platform/Define.h"
 #include <cassert>
@@ -197,7 +199,7 @@ enum ItemQualities
 // ***********************************
 
 #define SPELL_ATTR_UNK0                           0x00000001            // 0
-#define SPELL_ATTR_RANGED                         0x00000002            // 1 All ranged abilites have this flag
+#define SPELL_ATTR_RANGED                         0x00000002            // 1 All ranged abilities have this flag
 #define SPELL_ATTR_ON_NEXT_SWING_1                0x00000004            // 2 on next swing
 #define SPELL_ATTR_UNK3                           0x00000008            // 3 not set in 2.4.2
 #define SPELL_ATTR_UNK4                           0x00000010            // 4
@@ -218,15 +220,15 @@ enum ItemQualities
 #define SPELL_ATTR_LEVEL_DAMAGE_CALCULATION       0x00080000            // 19 spelldamage depends on caster level
 #define SPELL_ATTR_STOP_ATTACK_TARGET             0x00100000            // 20 Stop attack after use this spell (and not begin attack if use)
 #define SPELL_ATTR_IMPOSSIBLE_DODGE_PARRY_BLOCK   0x00200000            // 21 Cannot be dodged/parried/blocked
-#define SPELL_ATTR_UNK22                          0x00400000            // 22
+#define SPELL_ATTR_UNK22                          0x00400000            // 22 shoot spells
 #define SPELL_ATTR_UNK23                          0x00800000            // 23 castable while dead?
 #define SPELL_ATTR_CASTABLE_WHILE_MOUNTED         0x01000000            // 24 castable while mounted
 #define SPELL_ATTR_DISABLED_WHILE_ACTIVE          0x02000000            // 25 Activate and start cooldown after aura fade or remove summoned creature or go
-#define SPELL_ATTR_UNK26                          0x04000000            // 26
+#define SPELL_ATTR_UNK26                          0x04000000            // 26 Aura ignore immune?
 #define SPELL_ATTR_CASTABLE_WHILE_SITTING         0x08000000            // 27 castable while sitting
 #define SPELL_ATTR_CANT_USED_IN_COMBAT            0x10000000            // 28 Cannot be used in combat
 #define SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY  0x20000000            // 29 unaffected by invulnerability (hmm possible not...)
-#define SPELL_ATTR_UNK30                          0x40000000            // 30 breakable by damage?
+#define SPELL_ATTR_BREAKABLE_BY_DAMAGE            0x40000000            // 30 breakable by damage?
 #define SPELL_ATTR_CANT_CANCEL                    0x80000000            // 31 positive aura can't be canceled
 
 #define SPELL_ATTR_EX_UNK0                        0x00000001            // 0
@@ -246,7 +248,7 @@ enum ItemQualities
 #define SPELL_ATTR_EX_UNK14                       0x00004000            // 14
 #define SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY    0x00008000            // 15 remove auras on immunity
 #define SPELL_ATTR_EX_UNAFFECTED_BY_SCHOOL_IMMUNE 0x00010000            // 16 unaffected by school immunity
-#define SPELL_ATTR_EX_UNK17                       0x00020000            // 17
+#define SPELL_ATTR_EX_PET_NOT_AUTOCAST            0x00020000            // 17
 #define SPELL_ATTR_EX_UNK18                       0x00040000            // 18
 #define SPELL_ATTR_EX_UNK19                       0x00080000            // 19
 #define SPELL_ATTR_EX_REQ_COMBO_POINTS1           0x00100000            // 20 Req combo points on target
@@ -264,7 +266,7 @@ enum ItemQualities
 
 #define SPELL_ATTR_EX2_UNK0                       0x00000001            // 0
 #define SPELL_ATTR_EX2_UNK1                       0x00000002            // 1
-#define SPELL_ATTR_EX2_UNK2                       0x00000004            // 2
+#define SPELL_ATTR_EX2_UNK2                       0x00000004            // 2 boss spells?
 #define SPELL_ATTR_EX2_UNK3                       0x00000008            // 3
 #define SPELL_ATTR_EX2_UNK4                       0x00000010            // 4
 #define SPELL_ATTR_EX2_UNK5                       0x00000020            // 5
@@ -303,7 +305,7 @@ enum ItemQualities
 #define SPELL_ATTR_EX3_UNK5                       0x00000020            // 5
 #define SPELL_ATTR_EX3_UNK6                       0x00000040            // 6
 #define SPELL_ATTR_EX3_UNK7                       0x00000080            // 7
-#define SPELL_ATTR_EX3_UNK8                       0x00000100            // 8
+#define SPELL_ATTR_EX3_PLAYERS_ONLY               0x00000100            // 8 Player only?
 #define SPELL_ATTR_EX3_UNK9                       0x00000200            // 9
 #define SPELL_ATTR_EX3_MAIN_HAND                  0x00000400            // 10 Main hand weapon required
 #define SPELL_ATTR_EX3_BATTLEGROUND               0x00000800            // 11 Can casted only on battleground
@@ -597,7 +599,7 @@ enum SpellEffects
     SPELL_EFFECT_SUMMON_TOTEM_SLOT4        = 90,
     SPELL_EFFECT_THREAT_ALL                = 91,
     SPELL_EFFECT_ENCHANT_HELD_ITEM         = 92,
-    SPELL_EFFECT_SUMMON_PHANTASM           = 93,
+    SPELL_EFFECT_SUMMON_PHANTASM           = 93, //unused
     SPELL_EFFECT_SELF_RESURRECT            = 94,
     SPELL_EFFECT_SKINNING                  = 95,
     SPELL_EFFECT_CHARGE                    = 96,
@@ -734,7 +736,7 @@ enum Mechanics
     (1<<MECHANIC_SHACKLE )|(1<<MECHANIC_TURN     )|(1<<MECHANIC_HORROR)| \
     (1<<MECHANIC_DAZE    )|(1<<MECHANIC_SAPPED   ) )
 
-// Spell dispell type
+// Spell dispel type
 enum DispelType
 {
     DISPEL_NONE         = 0,
@@ -771,51 +773,118 @@ enum SpellImmunity
 enum Targets
 {
     TARGET_SELF                        = 1,
+    //TARGET_UNIT_CASTER
     TARGET_RANDOM_ENEMY_CHAIN_IN_AREA  = 2,                 // only one spell has that, but regardless, it's a target type after all
+    //TARGET_UNIT_NEARBY_ENEMY
+    TARGET_UNIT_SINGLE_UNKNOWN         = 3,
+    TARGET_UNIT_NEARBY_ALLY            = 4,
     TARGET_PET                         = 5,
+    //TARGET_UNIT_PET
     TARGET_CHAIN_DAMAGE                = 6,
+    //TARGET_UNIT_TARGET_ENEMY
+    TARGET_UNIT_AREA_ENTRY             = 7,
     TARGET_AREAEFFECT_CUSTOM           = 8,
+    //TARGET_UNIT_AREA_ENTRY_GROUND
     TARGET_INNKEEPER_COORDINATES       = 9,                 // uses in teleport to innkeeper spells
+    //TARGET_DEST_HOME
+    TARGET_UNIT_TARGET_DEST_CASTER     = 11, // teleport target to caster
     TARGET_ALL_ENEMY_IN_AREA           = 15,
+    //TARGET_UNIT_AREA_ENEMY
     TARGET_ALL_ENEMY_IN_AREA_INSTANT   = 16,
+    //TARGET_UNIT_AREA_ENEMY_GROUND
     TARGET_TABLE_X_Y_Z_COORDINATES     = 17,                // uses in teleport spells and some other
+    //TARGET_DEST_TABLE
     TARGET_EFFECT_SELECT               = 18,                // highly depends on the spell effect
+    //TARGET_DEST_CASTER_GROUND
     TARGET_ALL_PARTY_AROUND_CASTER     = 20,
+    //TARGET_UNIT_PARTY_CASTER
     TARGET_SINGLE_FRIEND               = 21,
+    //TARGET_UNIT_TARGET_ALLY
     TARGET_ALL_AROUND_CASTER           = 22,                // used only in TargetA, target selection dependent from TargetB
+    //TARGET_DEST_CASTER
     TARGET_GAMEOBJECT                  = 23,
+    //TARGET_OBJECT_OPEN
     TARGET_IN_FRONT_OF_CASTER          = 24,
+    //TARGET_UNIT_CONE_ENEMY
     TARGET_DUELVSPLAYER                = 25,
+    //TARGET_UNIT_TARGET
     TARGET_GAMEOBJECT_ITEM             = 26,
+    //TARGET_OBJECT_ITEM_PICKLOCK
     TARGET_MASTER                      = 27,
+    //TARGET_UNIT_MASTER
     TARGET_ALL_ENEMY_IN_AREA_CHANNELED = 28,
+    //TARGET_UNIT_AREA_ENEMY_CHANNEL
+    TARGET_UNIT_AREA_ALLY_CHANNEL      = 29, // 28,29 only used for effect 27, if interrupt channel, pstAA cancel
     TARGET_ALL_FRIENDLY_UNITS_AROUND_CASTER = 30,           // in TargetB used only with TARGET_ALL_AROUND_CASTER and in self casting range in TargetA
+    //TARGET_UNIT_AREA_ALLY
     TARGET_ALL_FRIENDLY_UNITS_IN_AREA  = 31,
+    //TARGET_UNIT_AREA_ALLY_GROUND
     TARGET_MINION                      = 32,
+    //TARGET_DEST_SUMMON
     TARGET_ALL_PARTY                   = 33,
+    //TARGET_UNIT_AREA_PARTY
     TARGET_ALL_PARTY_AROUND_CASTER_2   = 34,                // used in Tranquility
+    //TARGET_UNIT_AREA_PARTY_GROUND
     TARGET_SINGLE_PARTY                = 35,
+    //TARGET_UNIT_TARGET_PARTY
+    TARGET_DEST_CASTER_RANDOM_UNKNOWN  = 36, //unknown
     TARGET_AREAEFFECT_PARTY            = 37,
+    //TARGET_UNIT_PARTY_TARGET
     TARGET_SCRIPT                      = 38,
+    //TARGET_UNIT_NEARBY_ENTRY
     TARGET_SELF_FISHING                = 39,
-    TARGET_TOTEM_EARTH                 = 41,
-    TARGET_TOTEM_WATER                 = 42,
-    TARGET_TOTEM_AIR                   = 43,
-    TARGET_TOTEM_FIRE                  = 44,
+    //TARGET_UNIT_CASTER_FISHING
+    TARGET_OBJECT_USE                  = 40,
+    TARGET_DEST_CASTER_FRONT_LEFT      = 41, //earth totem
+    TARGET_DEST_CASTER_BACK_LEFT       = 42, //water totem
+    TARGET_DEST_CASTER_BACK_RIGHT      = 43, //air totem
+    TARGET_DEST_CASTER_FRONT_RIGHT     = 44, //fire totem
     TARGET_CHAIN_HEAL                  = 45,
+    //TARGET_UNIT_CHAINHEAL
     TARGET_SCRIPT_COORDINATES          = 46,
-    TARGET_DYNAMIC_OBJECT              = 47,
-    TARGET_SUMMON                      = 48,
+    //TARGET_DEST_NEARBY_ENTRY
+    TARGET_DEST_CASTER_FRONT           = 47,
+    TARGET_DEST_CASTER_BACK            = 48,
+    TARGET_DEST_CASTER_RIGHT           = 49,
+    TARGET_DEST_CASTER_LEFT            = 50,
+    TARGET_OBJECT_AREA                 = 51,
     TARGET_AREAEFFECT_CUSTOM_2         = 52,
+    //TARGET_DUMMY
     TARGET_CURRENT_ENEMY_COORDINATES   = 53,                // set unit coordinates as dest, only 16 target B imlemented
+    //TARGET_DEST_TARGET_ENEMY
+    TARGET_UNIT_CONE_ENEMY_UNKNOWN     = 54,
+    TARGET_DEST_CASTER_FRONT_LEAP      = 55, // for a leap spell
     TARGET_RANDOM_RAID_MEMBER          = 56,
+    //TARGET_UNIT_AREA_RAID
     TARGET_SINGLE_FRIEND_2             = 57,
+    //TARGET_UNIT_TARGET_RAID
+    TARGET_UNIT_CONE_ALLY              = 59,
+    TARGET_UNIT_AREA_SCRIPT            = 60,
     TARGET_AREAEFFECT_PARTY_AND_CLASS  = 61,
+    //TARGET_UNIT_CLASS_TARGET
+    TARGET_TEST                        = 62, // for a test spell 
     TARGET_DUELVSPLAYER_COORDINATES    = 63,
-    TARGET_BEHIND_VICTIM               = 65,                // uses in teleport behind spells
+    //TARGET_DEST_TARGET_ENEMY_UNKNOWN
+    TARGET_DEST_TARGET_FRONT           = 64,
+    TARGET_DEST_TARGET_BACK            = 65,                // uses in teleport behind spells
+    TARGET_DEST_TARGET_RIGHT           = 66,
+    TARGET_DEST_TARGET_LEFT            = 67,
+    TARGET_DEST_TARGET_ENEMY_UNKNOWN2  = 70,
+    TARGET_DEST_CASTER_RANDOM          = 72,
+    TARGET_DEST_CASTER_RADIUS          = 73,
+    TARGET_DEST_TARGET_RANDOM          = 74,
+    TARGET_DEST_TARGET_RADIUS          = 75,
+    TARGET_DEST_CHANNEL                = 76,
     TARGET_SINGLE_ENEMY                = 77,
+    //TARGET_UNIT_CHANNEL
+    TARGET_DEST_CASTER_FRONT_UNKNOWN   = 78,
+    TARGET_DEST_TABLE_UNKNOWN2         = 80,
+    TARGET_DEST_DEST_RANDOM            = 86,
     TARGET_SELF2                       = 87,
+    //TARGET_DEST_DEST
+    TARGET_UNIT_AREA_ALL_CHANNEL       = 88,
     TARGET_NONCOMBAT_PET               = 90,
+    //TARGET_UNIT_MINIPET
 };
 
 enum SpellMissInfo
@@ -2111,17 +2180,16 @@ enum ResponseCodes
 /// Ban function modes
 enum BanMode
 {
-    BAN_ACCOUNT,
-    BAN_CHARACTER,
-    BAN_IP
+	BAN_ACCOUNT,
+	BAN_CHARACTER,
+	BAN_IP
 };
 
 /// Ban function return codes
 enum BanReturn
 {
-    BAN_SUCCESS,
-    BAN_SYNTAX_ERROR,
-    BAN_NOTFOUND
+	BAN_SUCCESS,
+	BAN_SYNTAX_ERROR,
+	BAN_NOTFOUND
 };
-
 #endif

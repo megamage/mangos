@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "TemporarySummon.h"
@@ -30,6 +32,11 @@ Creature(), m_type(TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN), m_timer(0), m_lifetime(0
 
 void TemporarySummon::Update( uint32 diff )
 {
+    if (m_deathState == DEAD)
+    {
+        UnSummon();
+        return;
+    }
     switch(m_type)
     {
         case TEMPSUMMON_MANUAL_DESPAWN:
@@ -158,7 +165,7 @@ void TemporarySummon::Summon(TempSummonType type, uint32 lifetime)
     m_timer = lifetime;
     m_lifetime = lifetime;
 
-    GetMap()->Add((Creature*)this);
+    MapManager::Instance().GetMap(GetMapId(), this)->Add((Creature*)this);
 
     AIM_Initialize();
 }
@@ -166,6 +173,8 @@ void TemporarySummon::Summon(TempSummonType type, uint32 lifetime)
 void TemporarySummon::UnSummon()
 {
     CombatStop();
+
+    UnpossessSelf(false);
 
     CleanupsBeforeDelete();
     AddObjectToRemoveList();

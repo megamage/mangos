@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -29,28 +31,26 @@
 #include "Language.h"
 #include "AccountMgr.h"
 #include "SystemConfig.h"
-#include "revision.h"
-#include "revision_nr.h"
 #include "Util.h"
 
 bool ChatHandler::HandleHelpCommand(const char* args)
 {
-    char* cmd = strtok((char*)args, " ");
+	char* cmd = strtok((char*)args, " ");
     if(!cmd)
-    {
-        ShowHelpForCommand(getCommandTable(), "help");
-        ShowHelpForCommand(getCommandTable(), "");
-    }
-    else
-    {
-        if(!ShowHelpForCommand(getCommandTable(), cmd))
-            SendSysMessage(LANG_NO_HELP_CMD);
-    }
+	{
+		ShowHelpForCommand(getCommandTable(), "help");
+		ShowHelpForCommand(getCommandTable(), "");
+	}
+	else
+	{
+		if(!ShowHelpForCommand(getCommandTable(), cmd))
+			SendSysMessage(LANG_NO_HELP_CMD);
+	}
 
     return true;
 }
 
-bool ChatHandler::HandleCommandsCommand(const char* /*args*/)
+bool ChatHandler::HandleCommandsCommand(const char* args)
 {
     ShowHelpForCommand(getCommandTable(), "");
     return true;
@@ -94,15 +94,15 @@ bool ChatHandler::HandleServerInfoCommand(const char* /*args*/)
     uint32 maxQueuedClientsNum = sWorld.GetMaxQueuedSessionCount();
     std::string str = secsToTimeString(sWorld.GetUptime());
 
-    char const* full;
-    if(m_session)
-        full = _FULLVERSION(REVISION_DATE,REVISION_TIME,REVISION_NR,"|cffffffff|Hurl:" REVISION_ID "|h" REVISION_ID "|h|r");
-    else
-        full = _FULLVERSION(REVISION_DATE,REVISION_TIME,REVISION_NR,REVISION_ID);
+    PSendSysMessage(_FULLVERSION); //char const* full;
+    //if(m_session)
+    //    full = _FULLVERSION(REVISION_DATE,REVISION_TIME,"|cffffffff|Hurl:" REVISION_ID "|h" REVISION_ID "|h|r");
+    //else
+    //    full = _FULLVERSION(REVISION_DATE,REVISION_TIME,REVISION_ID);
 
-    SendSysMessage(full);
-    PSendSysMessage(LANG_USING_SCRIPT_LIB,sWorld.GetScriptsVersion());
-    PSendSysMessage(LANG_USING_WORLD_DB,sWorld.GetDBVersion());
+    //SendSysMessage(full);
+    //PSendSysMessage(LANG_USING_SCRIPT_LIB,sWorld.GetScriptsVersion());
+    //PSendSysMessage(LANG_USING_WORLD_DB,sWorld.GetDBVersion());
     PSendSysMessage(LANG_CONNECTED_USERS, activeClientsNum, maxActiveClientsNum, queuedClientsNum, maxQueuedClientsNum);
     PSendSysMessage(LANG_UPTIME, str.c_str());
 
@@ -160,8 +160,8 @@ bool ChatHandler::HandleGMListIngameCommand(const char* /*args*/)
     for(; itr != m.end(); ++itr)
     {
         if (itr->second->GetSession()->GetSecurity() &&
-            (itr->second->isGameMaster() || sWorld.getConfig(CONFIG_GM_IN_GM_LIST)) &&
-            (!m_session || itr->second->IsVisibleGloballyFor(m_session->GetPlayer())) )
+			(itr->second->isGameMaster() || sWorld.getConfig(CONFIG_GM_IN_GM_LIST)) &&
+			(!m_session || itr->second->IsVisibleGloballyFor(m_session->GetPlayer())) )
         {
             if(first)
             {
@@ -198,14 +198,14 @@ bool ChatHandler::HandlePasswordCommand(const char* args)
     if (password_new != password_new_c)
     {
         SendSysMessage (LANG_NEW_PASSWORDS_NOT_MATCH);
-        SetSentErrorMessage (true);
-        return false;
-    }
+		SetSentErrorMessage (true);
+		return false;
+	}
 
-    if (!accmgr.CheckPassword (m_session->GetAccountId(), password_old))
-    {
-        SendSysMessage (LANG_COMMAND_WRONGOLDPASSWORD);
-        SetSentErrorMessage (true);
+	if (!accmgr.CheckPassword (m_session->GetAccountId(), password_old))
+	{
+		SendSysMessage (LANG_COMMAND_WRONGOLDPASSWORD);
+		SetSentErrorMessage (true);
         return false;
     }
 
@@ -216,11 +216,11 @@ bool ChatHandler::HandlePasswordCommand(const char* args)
         case AOR_OK:
             SendSysMessage(LANG_COMMAND_PASSWORD);
             break;
-        case AOR_PASS_TOO_LONG:
-            SendSysMessage(LANG_PASSWORD_TOO_LONG);
-            SetSentErrorMessage(true);
-            return false;
-        case AOR_NAME_NOT_EXIST:                            // not possible case, don't want get account name for output
+		case AOR_PASS_TOO_LONG:
+			SendSysMessage(LANG_PASSWORD_TOO_LONG);
+			SetSentErrorMessage(true);
+			return false;
+		case AOR_NAME_NOT_EXIST:                            // not possible case, don't want get account name for output
         default:
             SendSysMessage(LANG_COMMAND_NOTCHANGEPASSWORD);
             SetSentErrorMessage(true);
@@ -260,6 +260,6 @@ bool ChatHandler::HandleLockAccountCommand(const char* args)
 /// Display the 'Message of the day' for the realm
 bool ChatHandler::HandleServerMotdCommand(const char* /*args*/)
 {
-    PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
-    return true;
+	PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
+	return true;
 }

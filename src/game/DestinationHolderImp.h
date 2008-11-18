@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,16 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef MANGOS_DESTINATIONHOLDERIMP_H
-#define MANGOS_DESTINATIONHOLDERIMP_H
+#ifndef TRINITY_DESTINATIONHOLDERIMP_H
+#define TRINITY_DESTINATIONHOLDERIMP_H
 
 #include "Creature.h"
 #include "MapManager.h"
@@ -154,13 +156,13 @@ DestinationHolder<TRAVELLER>::UpdateTraveller(TRAVELLER &traveller, uint32 diff,
         }
         // Change movement computation to micro movement based on last tick coords, this makes system work
         // even on multiple floors zones without hugh vmaps usage ;)
-
+        
         // Take care of underrun of uint32
         if (i_totalTravelTime >= i_timeElapsed)
             i_totalTravelTime -= i_timeElapsed;     // Consider only the remaining part
         else
             i_totalTravelTime = 0;
-
+        
         i_timeElapsed = 0;
         i_fromX = x;                            // and change origine
         i_fromY = y;                            // then I take into account only micro movement

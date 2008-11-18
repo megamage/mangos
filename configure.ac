@@ -1,4 +1,6 @@
-# Copyright (C) 2005-2008 MaNGOS project <http://getmangos.com/>
+# Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
+#
+# Thanks to the original authors: MaNGOS <http://www.mangosproject.org/>
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -13,10 +15,10 @@
 # TODO: create m4 directory and put the checks there, because this file got realy poluted ( by Derex )
 
 ## Prelude, basic settings for Autoconf
-#  PACKAGE:            mangos
-#  VERSION:            0.12.0 (trunk)
-#  BUG-REPORT-ADDRESS: mangos-devs@lists.sourceforge.net
-AC_INIT( [mangos], [0.12.0], [mangos-devs@lists.sourceforge.net])
+#  PACKAGE:            trinity
+#  VERSION:            0.0.1 (trunk)
+#  BUG-REPORT-ADDRESS: devs@trinitycore.org
+AC_INIT( [trinitycore], [0.0.1], [devs@trinitycore.org])
 AC_CONFIG_SRCDIR([src/shared/Base.cpp])
 
 ## Prelude, basic settings for Automake
@@ -69,6 +71,24 @@ AC_PROG_CXX
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
+
+
+# Check if enable scripts
+AC_ARG_ENABLE([scripts], AC_HELP_STRING([--enable-scripts], [Enable TrinityScripts (default: check) ]), [], [enable_scripts=yes])
+
+AC_MSG_CHECKING(whether to build scripting module)
+if test X$enable_scripts = Xyes -a -d $srcdir/src/bindings/scripts/scripts; then
+  tri_build_scripts=yes
+  AC_MSG_RESULT(yes)
+else
+  tri_build_scripts=no
+  AC_MSG_RESULT(no)
+  if test X$enable_scripts = Xyes; then
+    AC_MSG_WARN([src/bindings/scripts/scripts folder does not exist, scripts will be disabled])
+  fi
+fi
+
+AM_CONDITIONAL([USE_TSCRIPTS], [test X$tri_build_scripts = Xyes])
 
 # Check for doxygen
 AC_ARG_ENABLE(doxygen, AC_HELP_STRING([--enable-doxygen], [turn on generating documentation]))
@@ -146,7 +166,7 @@ fi
 ## Check for options
 #  Include debug info in library?
 AC_MSG_CHECKING(whether to include debug info in library)
-MANGOSD_DEBUG_INFO=no
+TRINITYD_DEBUG_INFO=no
 AC_ARG_WITH(debug-info,
 [
 Debugging options:
@@ -154,47 +174,47 @@ Debugging options:
   --with-debug-info       Include debug info in library],
 [
     if test "$withval" = "yes" ; then
-	CFLAGS="-g -DMANGOS_DEBUG $CFLAGS"
-	CXXFLAGS="-g -DMANGOS_DEBUG $CXXFLAGS"
-	MANGOSD_DEBUG_INFO=yes
+	CFLAGS="-g -DTRINITY_DEBUG $CFLAGS"
+	CXXFLAGS="-g -DTRINITY_DEBUG $CXXFLAGS"
+	TRINITYD_DEBUG_INFO=yes
     elif test "$withval" != "no" ; then
 	AC_MSG_ERROR(Please choose yes or no)
     fi
 ])
-AC_MSG_RESULT($MANGOSD_DEBUG_INFO)
+AC_MSG_RESULT($TRINITYD_DEBUG_INFO)
 
 
 # Enable CLI console?
 AC_MSG_CHECKING(whether cli console is enabled)
-MANGOSD_ENABLE_CLI=no
+TRINITYD_ENABLE_CLI=no
 AC_ARG_ENABLE(cli,
 [  --enable-cli Turn on command console system],
 [
     if test "$enableval" = "yes" ; then
 	CFLAGS="-DENABLE_CLI $CFLAGS"
 	CXXFLAGS="-DENABLE_CLI $CXXFLAGS"
-	MANGOSD_ENABLE_CLI=yes
+	TRINITYD_ENABLE_CLI=yes
     elif test "$withval" != "no" ; then
 	AC_MSG_ERROR(Please choose yes or no)
     fi
 ])
-AC_MSG_RESULT($MANGOSD_ENABLE_CLI)
+AC_MSG_RESULT($TRINITYD_ENABLE_CLI)
 
 # Enable remote console?
 AC_MSG_CHECKING(whether remote console is enabled)
-MANGOSD_ENABLE_RA=no
+TRINITYD_ENABLE_RA=no
 AC_ARG_ENABLE(ra,
 [  --enable-ra Turn on remote console system],
 [
     if test "$enableval" = "yes" ; then
 	CFLAGS="-DENABLE_RA $CFLAGS"
 	CXXFLAGS="-DENABLE_RA $CXXFLAGS"
-	MANGOSD_ENABLE_RA=yes
+	TRINITYD_ENABLE_RA=yes
     elif test "$withval" != "no" ; then
 	AC_MSG_ERROR(Please choose yes or no)
     fi
 ])
-AC_MSG_RESULT($MANGOSD_ENABLE_RA)
+AC_MSG_RESULT($TRINITYD_ENABLE_RA)
 
 ## Check for required header files.
 AC_HEADER_STDC
@@ -231,53 +251,60 @@ AC_CHECK_FUNCS([atexit ftime gethostbyaddr gethostbyname gethostname gettimeofda
 
 ## Check what to do with ACE library
 AC_LANG_PUSH([C++])
-AC_CHECK_HEADER([ace/Reactor.h], [have_ace_headers=yes], [have_ace_headers=no])
-AC_CHECK_LIB([ACE], [main], [have_ace_lib=yes], [have_ace_lib=no])
+AC_CHECK_HEADER([ace/Reactor.h], [tri_have_ace_headers=yes], [tri_have_ace_headers=no])
+AC_CHECK_LIB([ACE], [main], [tri_have_ace_lib=yes], [tri_have_ace_lib=no])
 AC_LANG_POP([C++])
 
 AC_MSG_CHECKING([whether to build ACE])
-if test X$have_ace_headers = Xyes -a X$have_ace_lib = Xyes;
+if test X$tri_have_ace_headers = Xyes -a X$tri_have_ace_lib = Xyes;
 then
-  need_to_build_ace=no
+  tri_need_to_build_ace=no
   AC_MSG_RESULT([no])
 else
-  if test X$have_ace_headers = Xno -a X$have_ace_lib = Xno; then
-    need_to_build_ace=yes
+  if test X$tri_have_ace_headers = Xno -a X$tri_have_ace_lib = Xno; then
+    tri_need_to_build_ace=yes
     AC_MSG_RESULT([yes])
   else
-    if test X$have_ace_headers = Xyes; then
+    if test X$tri_have_ace_headers = Xyes; then
        AC_MSG_ERROR([looks like you have ACE headers, but you do not have ACE libs installed])
     else
-       need_to_build_ace=yes
+       tri_need_to_build_ace=yes
        AC_MSG_RESULT([yes, over-install])
     fi
   fi
 fi
 
-if test X$need_to_build_ace = Xyes; then
-   MANGOS_INCLUDES="-I\$(top_srcdir)/dep/ACE_wrappers -I\$(top_builddir)/dep/ACE_wrappers $MANGOS_INCLUDES"
-   MANGOS_LIBS="\$(top_builddir)/dep/ACE_wrappers/ace/libACE.la $MANGOS_LIBS"
+if test X$tri_need_to_build_ace = Xyes; then
+   TRINI_INCLUDES="-I\$(top_srcdir)/dep/ACE_wrappers -I\$(top_builddir)/dep/ACE_wrappers $TRINI_INCLUDES"
+   TRINI_LIBS="\$(top_builddir)/dep/ACE_wrappers/ace/libACE.la $TRINI_LIBS"
 else
-   MANGOS_LIBS="-lACE $MANGOS_LIBS"
+   TRINI_LIBS="-lACE $TRINI_LIBS"
 fi
 
-AM_CONDITIONAL([MANGOS_BUILD_ACE], [test X$need_to_build_ace = Xyes])
+AM_CONDITIONAL([TRI_BUILD_ACE], [test X$tri_need_to_build_ace = Xyes])
 
 
 ## Unify all additional includes/libs in one variable.
 # TODO this looks kinda ugly, but when we add m4 folder I will make it look very pritey ( by Derex ).
-MANGOS_INCLUDES="$POSTGRE_INCLUDES $MYSQL_INCLUDES $MANGOS_INCLUDES"
-MANGOS_LIBS="$POSTGRE_LIBS $MYSQL_LIBS $ZLIB $COMPATLIB $SSLLIB $MANGOS_LIBS"
+TRINI_INCLUDES="$POSTGRE_INCLUDES $MYSQL_INCLUDES $TRINI_INCLUDES"
+TRINI_LIBS="$POSTGRE_LIBS $MYSQL_LIBS $ZLIB $COMPATLIB $SSLLIB $TRINI_LIBS"
 
 ## Export defined variables
+AC_SUBST(ZLIB)
+AC_SUBST(COMPATLIB)
+AC_SUBST(SSLLIB)
+AC_SUBST(MYSQL_INCLUDES)
+AC_SUBST(MYSQL_LIBS)
+AC_SUBST(POSTGRE_INCLUDES)
+AC_SUBST(POSTGRE_LIBS)
 AC_SUBST(DOXYGEN)
-AC_SUBST(MANGOSD_DEBUG_INFO)
-AC_SUBST(MANGOSD_ENABLE_CLI)
-AC_SUBST(MANGOSD_ENABLE_RA)
+AC_SUBST(TRINITYD_DEBUG_INFO)
+AC_SUBST(TRINITYD_ENABLE_CLI)
+AC_SUBST(TRINITYD_ENABLE_RA)
 
 ## Additional CPPFLAGS and LDFLAGS.
-AC_SUBST(MANGOS_INCLUDES)
-AC_SUBST(MANGOS_LIBS)
+AC_SUBST(TRINI_INCLUDES)
+AC_SUBST(TRINI_LIBS)
 
 ## Set output files.
 AC_CONFIG_HEADERS([config.h])
@@ -293,12 +320,7 @@ AC_CONFIG_FILES([
    doc/Doxyfile
    doc/Makefile
    Makefile
-   sql/Makefile
-   sql/tools/Makefile
-   sql/updates/Makefile
    src/Makefile
-   src/tools/Makefile
-   src/tools/genrevision/Makefile
    src/framework/Makefile
    src/shared/Makefile
    src/shared/Auth/Makefile
@@ -307,22 +329,25 @@ AC_CONFIG_FILES([
    src/shared/vmap/Makefile
    src/shared/SystemConfig.h
    src/game/Makefile
-   src/realmd/Makefile
-   src/realmd/realmd.conf.dist
-   src/mangosd/Makefile
-   src/mangosd/mangosd.conf.dist
+   src/trinityrealm/Makefile
+   src/trinitycore/Makefile
    src/bindings/Makefile
-   src/bindings/universal/Makefile
+   src/bindings/interface/Makefile
 ])
 
 ## Configure ACE, if needed
-if test X$need_to_build_ace = Xyes; then
+if test X$tri_need_to_build_ace = Xyes; then
   AC_CONFIG_SUBDIRS([dep/ACE_wrappers])
+fi
+
+## Configure ACE
+if test X$tri_build_scripts = Xyes; then
+AC_CONFIG_FILES([src/bindings/scripts/Makefile])
 fi
 
 AC_CONFIG_COMMANDS([default],[
   echo ""
-  echo "Configuration of MaNGOS $PACKAGE_VERSION is now complete."
+  echo "Configuration of TrinityCore $PACKAGE_VERSION is now complete."
   echo ""
  ],[PACKAGE_VERSION=$PACKAGE_VERSION])
 

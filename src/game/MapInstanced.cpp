@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "MapInstanced.h"
@@ -24,7 +26,7 @@
 #include "InstanceSaveMgr.h"
 #include "World.h"
 
-MapInstanced::MapInstanced(uint32 id, time_t expiry) : Map(id, expiry, 0, 0)
+MapInstanced::MapInstanced(uint32 id, time_t expiry, uint32 aInstanceId) : Map(id, expiry, 0, 0)
 {
     // initialize instanced maps list
     m_InstancedMaps.clear();
@@ -141,7 +143,17 @@ Map* MapInstanced::GetInstance(const WorldObject* obj)
             uint32 NewInstanceId = 0;                       // instanceId of the resulting map
             Player* player = (Player*)obj;
 
-            // TODO: battlegrounds and arenas
+            if(IsBattleGroundOrArena())
+            {
+                // instantiate or find existing bg map for player
+                // the instance id is set in battlegroundid
+                NewInstanceId = player->GetBattleGroundId();
+                assert(NewInstanceId);
+                map = _FindMap(NewInstanceId);
+                if(!map)
+                    map = CreateBattleGround(NewInstanceId);
+                return map;
+            }
 
             InstancePlayerBind *pBind = player->GetBoundInstance(GetId(), player->GetDifficulty());
             InstanceSave *pSave = pBind ? pBind->save : NULL;
@@ -249,3 +261,4 @@ void MapInstanced::DestroyInstance(InstancedMaps::iterator &itr)
     delete itr->second;
     m_InstancedMaps.erase(itr++);
 }
+

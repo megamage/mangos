@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Creature.h"
@@ -38,8 +40,8 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     Map const* map = MapManager::Instance().GetBaseMap(mapid);
 
     // For 2D/3D system selection
-    //bool is_land_ok  = creature.canWalk();                // not used?
-    //bool is_water_ok = creature.canSwim();                // not used?
+    bool is_land_ok  = creature.canWalk();
+    bool is_water_ok = creature.canSwim();
     bool is_air_ok   = creature.canFly();
 
     const float angle = rand_norm()*(M_PI*2);
@@ -50,11 +52,11 @@ RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     nx = X + distanceX;
     ny = Y + distanceY;
 
-    // prevent invalid coordinates generation
-    MaNGOS::NormalizeMapCoord(nx);
-    MaNGOS::NormalizeMapCoord(ny);
+    // prevent invalid coordinates generation 
+    Trinity::NormalizeMapCoord(nx);
+    Trinity::NormalizeMapCoord(ny);
 
-    dist = distanceX*distanceX + distanceY*distanceY;
+    dist = (nx - X)*(nx - X) + (ny - Y)*(ny - Y);
 
     if (is_air_ok) // 3D system above ground and above water (flying mode)
     {

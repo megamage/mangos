@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "DBCStores.h"
@@ -119,9 +121,21 @@ DBCStorage <TaxiPathEntry> sTaxiPathStore(TaxiPathEntryfmt);
 
 // DBC used only for initialization sTaxiPathSetBySource at startup.
 TaxiPathNodesByPath sTaxiPathNodesByPath;
-
+struct TaxiPathNodeEntry
+{
+    uint32    path;
+    uint32    index;
+    uint32    mapid;
+    float     x;
+    float     y;
+    float     z;
+    uint32    actionFlag;
+    uint32    delay;
+};
 static DBCStorage <TaxiPathNodeEntry> sTaxiPathNodeStore(TaxiPathNodeEntryfmt);
+
 DBCStorage <TotemCategoryEntry> sTotemCategoryStore(TotemCategoryEntryfmt);
+
 DBCStorage <WorldMapAreaEntry>  sWorldMapAreaStore(WorldMapAreaEntryfmt);
 DBCStorage <WorldSafeLocsEntry> sWorldSafeLocsStore(WorldSafeLocsEntryfmt);
 
@@ -221,7 +235,7 @@ void LoadDBCStores(std::string dataPath)
             flist.push_back(i);
         }
     }
-
+    
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sFactionTemplateStore,     dbcPath,"FactionTemplate.dbc");
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sGemPropertiesStore,       dbcPath,"GemProperties.dbc");
 
@@ -261,7 +275,7 @@ void LoadDBCStores(std::string dataPath)
 
         // DBC not support uint64 fields but SpellEntry have SpellFamilyFlags mapped at 2 uint32 fields
         // uint32 field already converted to bigendian if need, but must be swapped for correct uint64 bigendian view
-        #if MANGOS_ENDIAN == MANGOS_BIGENDIAN
+        #if TRINITY_ENDIAN == TRINITY_BIGENDIAN
         std::swap(*((uint32*)(&spell->SpellFamilyFlags)),*(((uint32*)(&spell->SpellFamilyFlags))+1));
         #endif
     }
@@ -269,21 +283,21 @@ void LoadDBCStores(std::string dataPath)
     for (uint32 j = 0; j < sSkillLineAbilityStore.GetNumRows(); ++j)
     {
         SkillLineAbilityEntry const *skillLine = sSkillLineAbilityStore.LookupEntry(j);
-
+    
         if(!skillLine)
             continue;
 
         SpellEntry const* spellInfo = sSpellStore.LookupEntry(skillLine->spellId);
 
         if(spellInfo && (spellInfo->Attributes & 0x1D0) == 0x1D0)
-        {
+        {      
             for (unsigned int i = 1; i < sCreatureFamilyStore.GetNumRows(); ++i)
             {
                 CreatureFamilyEntry const* cFamily = sCreatureFamilyStore.LookupEntry(i);
                 if(!cFamily)
                     continue;
 
-                if(skillLine->skillId != cFamily->skillLine[0] && skillLine->skillId != cFamily->skillLine[1])
+                if(skillLine->skillId != cFamily->skillLine && skillLine->skillId != cFamily->skillLine2)
                     continue;
 
                 sPetFamilySpellsStore[i].insert(spellInfo->Id);
@@ -295,6 +309,7 @@ void LoadDBCStores(std::string dataPath)
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellDurationStore,       dbcPath,"SpellDuration.dbc");
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellFocusObjectStore,    dbcPath,"SpellFocusObject.dbc");
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellItemEnchantmentStore,dbcPath,"SpellItemEnchantment.dbc");
+    
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellItemEnchantmentConditionStore,dbcPath,"SpellItemEnchantmentCondition.dbc");
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellRadiusStore,         dbcPath,"SpellRadius.dbc");
     LoadDBC(availableDbcLocales,bar,bad_dbc_files,sSpellRangeStore,          dbcPath,"SpellRange.dbc");
@@ -420,7 +435,7 @@ void LoadDBCStores(std::string dataPath)
     // error checks
     if(bad_dbc_files.size() >= DBCFilesCount )
     {
-        sLog.outError("\nIncorrect DataDir value in mangosd.conf or ALL required *.dbc files (%d) not found by path: %sdbc",DBCFilesCount,dataPath.c_str());
+        sLog.outError("\nIncorrect DataDir value in Trinityd.conf or ALL required *.dbc files (%d) not found by path: %sdbc",DBCFilesCount,dataPath.c_str());
         exit(1);
     }
     else if(!bad_dbc_files.empty() )
@@ -440,11 +455,11 @@ void LoadDBCStores(std::string dataPath)
     // check at up-to-date DBC files (2425 is last item extended cost added in 2.4.3)
     // check at up-to-date DBC files (71 is last char title added in 2.4.3)
     // check at up-to-date DBC files (1768 is last area added in 2.4.3)
-    if( !sSpellStore.LookupEntry(53085)            ||
-        !sSkillLineAbilityStore.LookupEntry(17514) ||
+    if( !sSpellStore.LookupEntry(53085)            || 
+        !sSkillLineAbilityStore.LookupEntry(17514) || 
         !sMapStore.LookupEntry(598)                ||
-        !sGemPropertiesStore.LookupEntry(1127)     ||
-        !sItemExtendedCostStore.LookupEntry(2425)  ||
+        !sGemPropertiesStore.LookupEntry(1127)     || 
+        !sItemExtendedCostStore.LookupEntry(2425)  || 
         !sCharTitlesStore.LookupEntry(71)          ||
         !sAreaStore.LookupEntry(1768)              )
     {
@@ -632,6 +647,6 @@ uint32 const* GetTalentTabPages(uint32 cls)
 }
 
 // script support functions
-MANGOS_DLL_SPEC DBCStorage <SoundEntriesEntry>  const* GetSoundEntriesStore()   { return &sSoundEntriesStore;   }
-MANGOS_DLL_SPEC DBCStorage <SpellEntry>         const* GetSpellStore()          { return &sSpellStore;          }
-MANGOS_DLL_SPEC DBCStorage <SpellRangeEntry>    const* GetSpellRangeStore()     { return &sSpellRangeStore;     }
+TRINITY_DLL_SPEC DBCStorage <SoundEntriesEntry>  const* GetSoundEntriesStore()   { return &sSoundEntriesStore;   }
+TRINITY_DLL_SPEC DBCStorage <SpellEntry>         const* GetSpellStore()          { return &sSpellStore;          }
+TRINITY_DLL_SPEC DBCStorage <SpellRangeEntry>    const* GetSpellRangeStore()     { return &sSpellRangeStore;     }

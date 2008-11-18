@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,12 +10,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include "Common.h"
@@ -116,6 +118,17 @@ bool ChatHandler::HandleNpcWhisperCommand(const char* args)
     return true;
 }
 
+bool ChatHandler::HandleNameAnnounceCommand(const char* args)
+{
+    WorldPacket data;
+    if(!*args)
+        return false;
+    //char str[1024];
+    //sprintf(str, GetTrinityString(LANG_ANNOUNCE_COLOR), m_session->GetPlayer()->GetName(), args);
+    sWorld.SendWorldText(LANG_ANNOUNCE_COLOR, m_session->GetPlayer()->GetName(), args);
+    return true;
+}
+
 // global announce
 bool ChatHandler::HandleAnnounceCommand(const char* args)
 {
@@ -123,6 +136,7 @@ bool ChatHandler::HandleAnnounceCommand(const char* args)
         return false;
 
     sWorld.SendWorldText(LANG_SYSTEMMESSAGE,args);
+
     return true;
 }
 
@@ -132,7 +146,7 @@ bool ChatHandler::HandleNotifyCommand(const char* args)
     if(!*args)
         return false;
 
-    std::string str = GetMangosString(LANG_GLOBAL_NOTIFY);
+    std::string str = GetTrinityString(LANG_GLOBAL_NOTIFY);
     str += args;
 
     WorldPacket data(SMSG_NOTIFICATION, (str.size()+1));
@@ -216,12 +230,13 @@ bool ChatHandler::HandleGMChatCommand(const char* args)
     return false;
 }
 
+
 //Enable\Dissable Invisible mode
 bool ChatHandler::HandleVisibleCommand(const char* args)
 {
     if (!*args)
     {
-        PSendSysMessage(LANG_YOU_ARE, m_session->GetPlayer()->isGMVisible() ?  GetMangosString(LANG_VISIBLE) : GetMangosString(LANG_INVISIBLE));
+        PSendSysMessage(LANG_YOU_ARE, m_session->GetPlayer()->isGMVisible() ?  GetTrinityString(LANG_VISIBLE) : GetTrinityString(LANG_INVISIBLE));
         return true;
     }
 
@@ -273,7 +288,7 @@ bool ChatHandler::HandleGPSCommand(const char* args)
             return false;
         }
     }
-    CellPair cell_val = MaNGOS::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
+    CellPair cell_val = Trinity::ComputeCellPair(obj->GetPositionX(), obj->GetPositionY());
     Cell cell(cell_val);
 
     uint32 zone_id = obj->GetZoneId();
@@ -288,11 +303,11 @@ bool ChatHandler::HandleGPSCommand(const char* args)
 
     Map2ZoneCoordinates(zone_x,zone_y,zone_id);
 
-    Map const *map = obj->GetMap();
+    Map const *map = MapManager::Instance().GetMap(obj->GetMapId(), obj);
     float ground_z = map->GetHeight(obj->GetPositionX(), obj->GetPositionY(), MAX_HEIGHT);
     float floor_z = map->GetHeight(obj->GetPositionX(), obj->GetPositionY(), obj->GetPositionZ());
 
-    GridPair p = MaNGOS::ComputeGridPair(obj->GetPositionX(), obj->GetPositionY());
+    GridPair p = Trinity::ComputeGridPair(obj->GetPositionX(), obj->GetPositionY());
 
     int gx=63-p.x_coord;
     int gy=63-p.y_coord;
@@ -312,8 +327,7 @@ bool ChatHandler::HandleGPSCommand(const char* args)
         GetName(),
         (obj->GetTypeId() == TYPEID_PLAYER ? "player" : "creature"), obj->GetName(),
         (obj->GetTypeId() == TYPEID_PLAYER ? "GUID" : "Entry"), (obj->GetTypeId() == TYPEID_PLAYER ? obj->GetGUIDLow(): obj->GetEntry()) );
-
-    sLog.outDebug(GetMangosString(LANG_MAP_POSITION),
+    sLog.outDebug(GetTrinityString(LANG_MAP_POSITION),
         obj->GetMapId(), (mapEntry ? mapEntry->name[sWorld.GetDefaultDbcLocale()] : "<unknown>" ),
         zone_id, (zoneEntry ? zoneEntry->area_name[sWorld.GetDefaultDbcLocale()] : "<unknown>" ),
         area_id, (areaEntry ? areaEntry->area_name[sWorld.GetDefaultDbcLocale()] : "<unknown>" ),
@@ -349,11 +363,18 @@ bool ChatHandler::HandleNamegoCommand(const char* args)
             return false;
         }
 
-        Map* pMap = m_session->GetPlayer()->GetMap();
+        Map* pMap = MapManager::Instance().GetMap(m_session->GetPlayer()->GetMapId(),m_session->GetPlayer());
 
-        if(pMap->Instanceable())
+        if(pMap->IsBattleGroundOrArena())
         {
-            Map* cMap = chr->GetMap();
+            // cannot summon to bg
+            SendSysMessage(LANG_CANNOT_SUMMON_TO_BG);
+            SetSentErrorMessage(true);
+            return false;
+        }
+        else if(pMap->IsDungeon())
+        {
+            Map* cMap = MapManager::Instance().GetMap(chr->GetMapId(),chr);
             if( cMap->Instanceable() && cMap->GetInstanceId() != pMap->GetInstanceId() )
             {
                 // cannot summon from instance to instance
@@ -395,7 +416,7 @@ bool ChatHandler::HandleNamegoCommand(const char* args)
     }
     else if (uint64 guid = objmgr.GetPlayerGUIDByName(name))
     {
-        PSendSysMessage(LANG_SUMMONING, name.c_str(),GetMangosString(LANG_OFFLINE));
+        PSendSysMessage(LANG_SUMMONING, name.c_str(),GetTrinityString(LANG_OFFLINE));
 
         // in point where GM stay
         Player::SavePositionInDB(m_session->GetPlayer()->GetMapId(),
@@ -435,9 +456,31 @@ bool ChatHandler::HandleGonameCommand(const char* args)
     Player *chr = objmgr.GetPlayer(name.c_str());
     if (chr)
     {
-        Map* cMap = chr->GetMap();
-        if(cMap->Instanceable())
+        Map* cMap = MapManager::Instance().GetMap(chr->GetMapId(),chr);
+        if(cMap->IsBattleGroundOrArena())
         {
+            // only allow if gm mode is on
+            if (!_player->isGameMaster())
+            {
+                SendSysMessage(LANG_CANNOT_GO_TO_BG_GM);
+                SetSentErrorMessage(true);
+                return false;
+            }
+            // if already in a bg, don't let port to other
+            else if (_player->GetBattleGroundId())
+            {
+                SendSysMessage(LANG_CANNOT_GO_TO_BG_FROM_BG);
+                SetSentErrorMessage(true);
+                return false;
+            }
+            // all's well, set bg id
+            // when porting out from the bg, it will be reset to 0
+            _player->SetBattleGroundId(chr->GetBattleGroundId());
+        }
+        else if(cMap->IsDungeon())
+        {
+            Map* pMap = MapManager::Instance().GetMap(_player->GetMapId(),_player);
+
             // we have to go to instance, and can go to player only if:
             //   1) we are in his group (either as leader or as member)
             //   2) we are not bound to any group and have GM mode on
@@ -748,7 +791,7 @@ bool ChatHandler::HandleModifyEnergyCommand(const char* args)
     chr->SetMaxPower(POWER_ENERGY,energym );
     chr->SetPower(POWER_ENERGY, energy );
 
-    sLog.outDetail(GetMangosString(LANG_CURRENT_ENERGY),chr->GetMaxPower(POWER_ENERGY));
+    sLog.outDetail(GetTrinityString(LANG_CURRENT_ENERGY),chr->GetMaxPower(POWER_ENERGY));
 
     return true;
 }
@@ -1188,7 +1231,7 @@ bool ChatHandler::HandleModifyScaleCommand(const char* args)
         return false;
 
     float Scale = (float)atof((char*)args);
-    if (Scale > 3.0f || Scale <= 0.0f)
+    if (Scale > 10.0f || Scale <= 0.0f)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
@@ -1491,7 +1534,7 @@ bool ChatHandler::HandleModifyMoneyCommand(const char* args)
     {
         int32 newmoney = moneyuser + addmoney;
 
-        sLog.outDetail(GetMangosString(LANG_CURRENT_MONEY), moneyuser, addmoney, newmoney);
+        sLog.outDetail(GetTrinityString(LANG_CURRENT_MONEY), moneyuser, addmoney, newmoney);
         if(newmoney <= 0 )
         {
             PSendSysMessage(LANG_YOU_TAKE_ALL_MONEY, chr->GetName());
@@ -1516,7 +1559,7 @@ bool ChatHandler::HandleModifyMoneyCommand(const char* args)
         chr->ModifyMoney( addmoney );
     }
 
-    sLog.outDetail(GetMangosString(LANG_NEW_MONEY), moneyuser, addmoney, chr->GetMoney() );
+    sLog.outDetail(GetTrinityString(LANG_NEW_MONEY), moneyuser, addmoney, chr->GetMoney() );
 
     return true;
 }
@@ -1613,6 +1656,14 @@ bool ChatHandler::HandleTeleCommand(const char * args)
         return false;
     }
 
+    MapEntry const * me = sMapStore.LookupEntry(tele->mapId);
+    if(!me || me->IsBattleGroundOrArena())
+    {
+        SendSysMessage(LANG_CANNOT_TELE_TO_BG);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
     // stop flight if need
     if(_player->isInFlight())
     {
@@ -1676,9 +1727,9 @@ bool ChatHandler::HandleLookupAreaCommand(const char* args)
                 // send area in "id - [name]" format
                 std::ostringstream ss;
                 if (m_session)
-                    ss << areaEntry->ID << " - |cffffffff|Harea:" << areaEntry->ID << "|h[" << name << " " << localeNames[loc]<< "]|h|r";
-                else
-                    ss << areaEntry->ID << " - " << name << " " << localeNames[loc];
+					ss << areaEntry->ID << " - |cffffffff|Harea:" << areaEntry->ID << "|h[" << name << " " << localeNames[loc]<< "]|h|r";
+				else
+					ss << areaEntry->ID << " - " << name << " " << localeNames[loc];
 
                 SendSysMessage (ss.str ().c_str());
 
@@ -1686,10 +1737,8 @@ bool ChatHandler::HandleLookupAreaCommand(const char* args)
             }
         }
     }
-
     if (counter == 0)                                      // if counter == 0 then we found nth
         SendSysMessage (LANG_COMMAND_NOAREAFOUND);
-
     return true;
 }
 
@@ -1718,7 +1767,7 @@ bool ChatHandler::HandleLookupTeleCommand(const char * args)
 
     std::ostringstream reply;
 
-    GameTeleMap const & teleMap = objmgr.GetGameTeleMap();
+	GameTeleMap const & teleMap = objmgr.GetGameTeleMap();
     for(GameTeleMap::const_iterator itr = teleMap.begin(); itr != teleMap.end(); ++itr)
     {
         GameTele const* tele = &itr->second;
@@ -1727,9 +1776,9 @@ bool ChatHandler::HandleLookupTeleCommand(const char * args)
             continue;
 
         if (m_session)
-            reply << "  |cffffffff|Htele:" << itr->first << "|h[" << tele->name << "]|h|r\n";
-        else
-            reply << "  " << itr->first << " " << tele->name << "\n";
+			reply << "  |cffffffff|Htele:" << itr->first << "|h[" << tele->name << "]|h|r\n";
+		else
+			reply << "  " << itr->first << " " << tele->name << "\n";
     }
 
     if(reply.str().empty())
@@ -1745,7 +1794,7 @@ bool ChatHandler::HandleWhispersCommand(const char* args)
 {
     if(!*args)
     {
-        PSendSysMessage(LANG_COMMAND_WHISPERACCEPTING, m_session->GetPlayer()->isAcceptWhispers() ?  GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+        PSendSysMessage(LANG_COMMAND_WHISPERACCEPTING, m_session->GetPlayer()->isAcceptWhispers() ?  GetTrinityString(LANG_ON) : GetTrinityString(LANG_OFF));
         return true;
     }
 
@@ -1876,6 +1925,7 @@ bool ChatHandler::HandleSendMailCommand(const char* args)
         return false;
     }
 
+    uint32 mailId = objmgr.GenerateMailID();
     // from console show not existed sender
     uint32 sender_guidlo = m_session ? m_session->GetPlayer()->GetGUIDLow() : 0;
 
@@ -1924,6 +1974,14 @@ bool ChatHandler::HandleNameTeleCommand(const char * args)
         return false;
     }
 
+    MapEntry const * me = sMapStore.LookupEntry(tele->mapId);
+    if(!me || me->IsBattleGroundOrArena())
+    {
+        SendSysMessage(LANG_CANNOT_TELE_TO_BG);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
     Player *chr = objmgr.GetPlayer(name.c_str());
     if (chr)
     {
@@ -1953,7 +2011,7 @@ bool ChatHandler::HandleNameTeleCommand(const char * args)
     }
     else if (uint64 guid = objmgr.GetPlayerGUIDByName(name.c_str()))
     {
-        PSendSysMessage(LANG_TELEPORTING_TO, name.c_str(), GetMangosString(LANG_OFFLINE), tele->name.c_str());
+        PSendSysMessage(LANG_TELEPORTING_TO, name.c_str(), GetTrinityString(LANG_OFFLINE), tele->name.c_str());
         Player::SavePositionInDB(tele->mapId,tele->position_x,tele->position_y,tele->position_z,tele->orientation,MapManager::Instance().GetZoneId(tele->mapId,tele->position_x,tele->position_y),guid);
     }
     else
@@ -1985,6 +2043,13 @@ bool ChatHandler::HandleGroupTeleCommand(const char * args)
         return false;
     }
 
+    MapEntry const * me = sMapStore.LookupEntry(tele->mapId);
+    if(!me || me->IsBattleGroundOrArena())
+    {
+        SendSysMessage(LANG_CANNOT_TELE_TO_BG);
+        SetSentErrorMessage(true);
+        return false;
+    }
     Group *grp = player->GetGroup();
     if(!grp)
     {
@@ -2058,7 +2123,7 @@ bool ChatHandler::HandleGroupgoCommand(const char* args)
         return false;
     }
 
-    Map* gmMap = m_session->GetPlayer()->GetMap();
+    Map* gmMap = MapManager::Instance().GetMap(m_session->GetPlayer()->GetMapId(),m_session->GetPlayer());
     bool to_instance =  gmMap->Instanceable();
 
     // we are in instance, and can summon only player in our group with us as lead
@@ -2088,7 +2153,7 @@ bool ChatHandler::HandleGroupgoCommand(const char* args)
 
         if (to_instance)
         {
-            Map* plMap = pl->GetMap();
+            Map* plMap = MapManager::Instance().GetMap(pl->GetMapId(),pl);
 
             if ( plMap->Instanceable() && plMap->GetInstanceId() != gmMap->GetInstanceId() )
             {

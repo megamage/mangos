@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,14 +47,14 @@ void DynamicObject::AddToWorld()
 {
     ///- Register the dynamicObject for guid lookup
     if(!IsInWorld()) ObjectAccessor::Instance().AddObject(this);
-    Object::AddToWorld();
+    WorldObject::AddToWorld();
 }
 
 void DynamicObject::RemoveFromWorld()
 {
     ///- Remove the dynamicObject from the accessor
     if(IsInWorld()) ObjectAccessor::Instance().RemoveObject(this);
-    Object::RemoveFromWorld();
+    WorldObject::RemoveFromWorld();
 }
 
 bool DynamicObject::Create( uint32 guidlow, Unit *caster, uint32 spellId, uint32 effIndex, float x, float y, float z, int32 duration, float radius )
@@ -111,19 +113,19 @@ void DynamicObject::Update(uint32 p_time)
         deleteThis = true;
 
     // TODO: make a timer and update this in larger intervals
-    CellPair p(MaNGOS::ComputeCellPair(GetPositionX(), GetPositionY()));
+    CellPair p(Trinity::ComputeCellPair(GetPositionX(), GetPositionY()));
     Cell cell(p);
     cell.data.Part.reserved = ALL_DISTRICT;
     cell.SetNoCreate();
 
-    MaNGOS::DynamicObjectUpdater notifier(*this,caster);
+    Trinity::DynamicObjectUpdater notifier(*this,caster);
 
-    TypeContainerVisitor<MaNGOS::DynamicObjectUpdater, WorldTypeMapContainer > world_object_notifier(notifier);
-    TypeContainerVisitor<MaNGOS::DynamicObjectUpdater, GridTypeMapContainer > grid_object_notifier(notifier);
+    TypeContainerVisitor<Trinity::DynamicObjectUpdater, WorldTypeMapContainer > world_object_notifier(notifier);
+    TypeContainerVisitor<Trinity::DynamicObjectUpdater, GridTypeMapContainer > grid_object_notifier(notifier);
 
     CellLock<GridReadGuard> cell_lock(cell, p);
-    cell_lock->Visit(cell_lock, world_object_notifier, *GetMap());
-    cell_lock->Visit(cell_lock, grid_object_notifier,  *GetMap());
+    cell_lock->Visit(cell_lock, world_object_notifier, *MapManager::Instance().GetMap(GetMapId(), this));
+    cell_lock->Visit(cell_lock, grid_object_notifier,  *MapManager::Instance().GetMap(GetMapId(), this));
 
     if(deleteThis)
     {
@@ -134,6 +136,13 @@ void DynamicObject::Update(uint32 p_time)
 
 void DynamicObject::Delete()
 {
+    // Make sure the object is back to grid container for removal as farsight targets
+    // are switched to world container on creation and they are also set to active
+    if (isActive())
+    {
+        GetMap()->SwitchGridContainers(this, false);
+        setActive(false);
+    }
     SendObjectDeSpawnAnim(GetGUID());
     AddObjectToRemoveList();
 }
@@ -148,5 +157,7 @@ void DynamicObject::Delay(int32 delaytime)
 
 bool DynamicObject::isVisibleForInState(Player const* u, bool inVisibleList) const
 {
-    return IsInWorld() && u->IsInWorld() && IsWithinDistInMap(u,World::GetMaxVisibleDistanceForObject()+(inVisibleList ? World::GetVisibleObjectGreyDistance() : 0.0f));
+    return IsInWorld() && u->IsInWorld() 
+        && (IsWithinDistInMap(u,World::GetMaxVisibleDistanceForObject()+(inVisibleList ? World::GetVisibleObjectGreyDistance() : 0.0f))
+        || GetCasterGUID() == u->GetGUID());
 }

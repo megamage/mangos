@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,15 +10,15 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-#ifndef MANGOS_SPELLAURADEFINES_H
-#define MANGOS_SPELLAURADEFINES_H
+#ifndef TRINITY_SPELLAURADEFINES_H
+#define TRINITY_SPELLAURADEFINES_H
 
 #define MAX_AURAS 56
 #define MAX_POSITIVE_AURAS 40
@@ -211,7 +213,7 @@ enum AuraType
     SPELL_AURA_MOD_SPEED_NOT_STACK = 171,
     SPELL_AURA_MOD_MOUNTED_SPEED_NOT_STACK = 172,
     SPELL_AURA_ALLOW_CHAMPION_SPELLS = 173,
-    SPELL_AURA_MOD_SPELL_DAMAGE_OF_STAT_PERCENT = 174,      // by defeult intelect, dependent from SPELL_AURA_MOD_SPELL_HEALING_OF_STAT_PERCENT
+    SPELL_AURA_MOD_SPELL_DAMAGE_OF_STAT_PERCENT = 174,      // by default intellect, dependent from SPELL_AURA_MOD_SPELL_HEALING_OF_STAT_PERCENT
     SPELL_AURA_MOD_SPELL_HEALING_OF_STAT_PERCENT = 175,
     SPELL_AURA_SPIRIT_OF_REDEMPTION = 176,
     SPELL_AURA_AOE_CHARM = 177,

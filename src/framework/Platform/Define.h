@@ -1,5 +1,7 @@
-/*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+/* 
+ * Copyright (C) 2005-2008 Mangos <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MANGOS_DEFINE_H
-#define MANGOS_DEFINE_H
+#ifndef TRINITY_DEFINE_H
+#define TRINITY_DEFINE_H
 
 #include <sys/types.h>
 
@@ -26,72 +28,72 @@
 
 #include "Platform/CompilerDefs.h"
 
-#define MANGOS_LITTLEENDIAN 0
-#define MANGOS_BIGENDIAN    1
+#define TRINITY_LITTLEENDIAN 0
+#define TRINITY_BIGENDIAN    1
 
-#if !defined(MANGOS_ENDIAN)
+#if !defined(TRINITY_ENDIAN)
 #  if defined (ACE_BIG_ENDIAN)
-#    define MANGOS_ENDIAN MANGOS_BIGENDIAN
+#    define TRINITY_ENDIAN TRINITY_BIGENDIAN
 #  else //ACE_BYTE_ORDER != ACE_BIG_ENDIAN
-#    define MANGOS_ENDIAN MANGOS_LITTLEENDIAN
+#    define TRINITY_ENDIAN TRINITY_LITTLEENDIAN
 #  endif //ACE_BYTE_ORDER
-#endif //MANGOS_ENDIAN
+#endif //TRINITY_ENDIAN
 
 #if PLATFORM == PLATFORM_WINDOWS
-#  define MANGOS_EXPORT __declspec(dllexport)
-#  define MANGOS_LIBRARY_HANDLE HMODULE
-#  define MANGOS_LOAD_LIBRARY(a) LoadLibrary(a)
-#  define MANGOS_CLOSE_LIBRARY FreeLibrary
-#  define MANGOS_GET_PROC_ADDR GetProcAddress
-#  define MANGOS_IMPORT __cdecl
-#  define MANGOS_SCRIPT_EXT ".dll"
-#  define MANGOS_SCRIPT_NAME "MaNGOSScript"
+#  define TRINITY_EXPORT __declspec(dllexport)
+#  define TRINITY_LIBRARY_HANDLE HMODULE
+#  define TRINITY_LOAD_LIBRARY(a) LoadLibrary(a)
+#  define TRINITY_CLOSE_LIBRARY FreeLibrary
+#  define TRINITY_GET_PROC_ADDR GetProcAddress
+#  define TRINITY_IMPORT __cdecl
+#  define TRINITY_SCRIPT_EXT ".dll"
+#  define TRINITY_SCRIPT_NAME "TrinityScript"
 #else //PLATFORM != PLATFORM_WINDOWS
-#  define MANGOS_LIBRARY_HANDLE void*
-#  define MANGOS_EXPORT export
-#  define MANGOS_LOAD_LIBRARY(a) dlopen(a,RTLD_NOW)
-#  define MANGOS_CLOSE_LIBRARY dlclose
-#  define MANGOS_GET_PROC_ADDR dlsym
+#  define TRINITY_LIBRARY_HANDLE void*
+#  define TRINITY_EXPORT export
+#  define TRINITY_LOAD_LIBRARY(a) dlopen(a,RTLD_NOW)
+#  define TRINITY_CLOSE_LIBRARY dlclose
+#  define TRINITY_GET_PROC_ADDR dlsym
 #  if defined(__APPLE_CC__) && defined(BIG_ENDIAN)
-#    define MANGOS_IMPORT __attribute__ ((longcall))
+#    define TRINITY_IMPORT __attribute__ ((longcall))
 #  else
-#    define MANGOS_IMPORT __attribute__ ((cdecl))
+#    define TRINITY_IMPORT __attribute__ ((cdecl))
 #  endif //__APPLE_CC__ && BIG_ENDIAN
-#  define MANGOS_SCRIPT_EXT ".so"
-#  define MANGOS_SCRIPT_NAME "libmangosscript"
+#  define TRINITY_SCRIPT_EXT ".so"
+#  define TRINITY_SCRIPT_NAME "libtrinityscript"
 #endif //PLATFORM
 
 #if PLATFORM == PLATFORM_WINDOWS
-#  ifdef MANGOS_WIN32_DLL_IMPORT
-#    define MANGOS_DLL_DECL __declspec(dllimport)
-#  else //!MANGOS_WIN32_DLL_IMPORT
-#    ifdef MANGOS_WIND_DLL_EXPORT
-#      define MANGOS_DLL_DECL __declspec(dllexport)
-#    else //!MANGOS_WIND_DLL_EXPORT
-#      define MANGOS_DLL_DECL
-#    endif //MANGOS_WIND_DLL_EXPORT
-#  endif //MANGOS_WIN32_DLL_IMPORT
+#  ifdef TRINITY_WIN32_DLL_IMPORT
+#    define TRINITY_DLL_DECL __declspec(dllimport)
+#  else //!TRINITY_WIN32_DLL_IMPORT
+#    ifdef TRINITY_WIND_DLL_EXPORT
+#      define TRINITY_DLL_DECL __declspec(dllexport)
+#    else //!TRINITY_WIND_DLL_EXPORT
+#      define TRINITY_DLL_DECL
+#    endif //TRINITY_WIND_DLL_EXPORT
+#  endif //TRINITY_WIN32_DLL_IMPORT
 #else //PLATFORM != PLATFORM_WINDOWS
-#  define MANGOS_DLL_DECL
+#  define TRINITY_DLL_DECL
 #endif //PLATFORM
 
 #if PLATFORM == PLATFORM_WINDOWS
-#  define MANGOS_DLL_SPEC __declspec(dllexport)
+#  define TRINITY_DLL_SPEC __declspec(dllexport)
 #  ifndef DECLSPEC_NORETURN
 #    define DECLSPEC_NORETURN __declspec(noreturn)
 #  endif //DECLSPEC_NORETURN
 #else //PLATFORM != PLATFORM_WINDOWS
-#  define MANGOS_DLL_SPEC
+#  define TRINITY_DLL_SPEC
 #  define DECLSPEC_NORETURN
 #endif //PLATFORM
 
 #if !defined(DEBUG)
-#  define MANGOS_INLINE inline
+#  define TRINITY_INLINE inline
 #else //DEBUG
-#  if !defined(MANGOS_DEBUG)
-#    define MANGOS_DEBUG
-#  endif //MANGOS_DEBUG
-#  define MANGOS_INLINE
+#  if !defined(TRINITY_DEBUG)
+#    define TRINITY_DEBUG
+#  endif //TRINITY_DEBUG
+#  define TRINITY_INLINE
 #endif //!DEBUG
 
 #if COMPILER == COMPILER_GNU
@@ -118,4 +120,4 @@ typedef uint32      DWORD;
 
 typedef uint64 OBJECT_HANDLE;
 
-#endif //MANGOS_DEFINE_H
+#endif //TRINITY_DEFINE_H

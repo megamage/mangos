@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2008 MaNGOS <http://www.mangosproject.org/>
+ *
+ * Copyright (C) 2008 Trinity <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +69,7 @@ enum UNIT_EVENT_TYPE
 
 //==============================================================
 
-class MANGOS_DLL_SPEC UnitBaseEvent
+class TRINITY_DLL_SPEC UnitBaseEvent
 {
     private:
         uint32 iType;
@@ -82,7 +84,7 @@ class MANGOS_DLL_SPEC UnitBaseEvent
 
 //==============================================================
 
-class MANGOS_DLL_SPEC ThreatRefStatusChangeEvent : public UnitBaseEvent
+class TRINITY_DLL_SPEC ThreatRefStatusChangeEvent : public UnitBaseEvent
 {
     private:
         HostilReference* iHostilReference;
@@ -119,7 +121,7 @@ class MANGOS_DLL_SPEC ThreatRefStatusChangeEvent : public UnitBaseEvent
 
 //==============================================================
 
-class MANGOS_DLL_SPEC ThreatManagerEvent : public ThreatRefStatusChangeEvent
+class TRINITY_DLL_SPEC ThreatManagerEvent : public ThreatRefStatusChangeEvent
 {
     private:
         ThreatContainer* iThreatContainer;
