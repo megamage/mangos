@@ -69,5 +69,11 @@ bin/*
 *.ncb
 *.suo
 *.orig
+*.tmp
+dep/lib/*
 win/VC90/*
+*.dll
+*.exp
+*.lib
+*.pdb
 src/bindings/scripts/VC90/*
