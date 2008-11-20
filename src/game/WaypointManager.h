@@ -25,12 +25,11 @@
 #include <string>
 #include "Utilities/UnorderedMap.h"
 
-#define MAX_WAYPOINT_TEXT 5
 struct WaypointBehavior
 {
     uint32 emote;
     uint32 spell;
-    int32  textid[MAX_WAYPOINT_TEXT];
+    std::string text[5];
     uint32 model1;
     uint32 model2;
 

@@ -77,3 +77,4 @@ win/VC90/*
 *.lib
 *.pdb
 src/bindings/scripts/VC90/*
+*.rej
