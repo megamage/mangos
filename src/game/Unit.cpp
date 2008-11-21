@@ -3895,16 +3895,17 @@ bool Unit::RemoveNoStackAurasDueToAura(Aura *Aur)
 
         if(!is_triggered_by_spell)
         {
-            SpellSpecific i_spellId_spec = GetSpellSpecific(i_spellId);
-
-            bool is_sspc = IsSingleFromSpellSpecificPerCaster(spellId_spec,i_spellId_spec);
-
-            if( is_sspc && Aur->GetCasterGUID() == (*i).second->GetCasterGUID() )
+            bool sameCaster = Aur->GetCasterGUID() == (*i).second->GetCasterGUID();
+            if( spellmgr.IsNoStackSpellDueToSpell(spellId, i_spellId, sameCaster) )
             {
-                // cannot remove higher rank
-                if (spellmgr.IsRankSpellDueToSpell(spellProto, i_spellId))
-                    if(CompareAuraRanks(spellId, effIndex, i_spellId, i_effIndex) < 0)
-                        return false;
+                //some spells should be not removed by lower rank of them
+                // what is this spell?
+                if (!sameCaster
+                    &&(spellProto->Effect[effIndex]==SPELL_EFFECT_APPLY_AREA_AURA_PARTY)
+                    &&(spellProto->DurationIndex==21)
+                    &&(spellmgr.IsRankSpellDueToSpell(spellProto, i_spellId))
+                    &&(CompareAuraRanks(spellId, effIndex, i_spellId, i_effIndex) < 0))
+                    return false;
 
                 // Its a parent aura (create this aura in ApplyModifier)
                 if ((*i).second->IsInUse())
@@ -3918,39 +3919,6 @@ bool Unit::RemoveNoStackAurasDueToAura(Aura *Aur)
                     break;
                 else
                     next =  m_Auras.begin();
-            }
-            else if( !is_sspc && spellmgr.IsNoStackSpellDueToSpell(spellId, i_spellId) )
-            {
-                // Its a parent aura (create this aura in ApplyModifier)
-                if ((*i).second->IsInUse())
-                {
-                    sLog.outError("Aura (Spell %u Effect %u) is in process but attempt removed at aura (Spell %u Effect %u) adding, need add stack rule for Unit::RemoveNoStackAurasDueToAura", i->second->GetId(), i->second->GetEffIndex(),Aur->GetId(), Aur->GetEffIndex());
-                    continue;
-                }
-                RemoveAurasDueToSpell(i_spellId);
-
-                if( m_Auras.empty() )
-                    break;
-                else
-                    next =  m_Auras.begin();
-            }
-            // Potions stack aura by aura (elixirs/flask already checked)
-            else if( spellProto->SpellFamilyName == SPELLFAMILY_POTION && i_spellProto->SpellFamilyName == SPELLFAMILY_POTION )
-            {
-                if (IsNoStackAuraDueToAura(spellId, effIndex, i_spellId, i_effIndex))
-                {
-                    if(CompareAuraRanks(spellId, effIndex, i_spellId, i_effIndex) < 0)
-                        return false;                       // cannot remove higher rank
-
-                    // Its a parent aura (create this aura in ApplyModifier)
-                    if ((*i).second->IsInUse())
-                    {
-                        sLog.outError("Aura (Spell %u Effect %u) is in process but attempt removed at aura (Spell %u Effect %u) adding, need add stack rule for Unit::RemoveNoStackAurasDueToAura", i->second->GetId(), i->second->GetEffIndex(),Aur->GetId(), Aur->GetEffIndex());
-                        continue;
-                    }
-                    RemoveAura(i);
-                    next = i;
-                }
             }
         }
     }
@@ -8523,7 +8491,8 @@ void Unit::CombatStart(Unit* target)
     if(!target->IsStandState() && !target->hasUnitState(UNIT_STAT_STUNNED))
         target->SetStandState(PLAYER_STATE_NONE);
 
-    if(!target->isInCombat() && target->GetTypeId() != TYPEID_PLAYER && ((Creature*)target)->AI())
+    if(!target->isInCombat() && target->GetTypeId() != TYPEID_PLAYER
+        && ((Creature*)target)->isAggressive() && ((Creature*)target)->AI())
         ((Creature*)target)->AI()->AttackStart(this);
 
     SetInCombatWith(target);
@@ -10455,7 +10424,7 @@ void Unit::UpdateReactives( uint32 p_time )
     }
 }
 
-Unit* Unit::SelectNearbyTarget() const
+Unit* Unit::SelectNearbyTarget(float dist) const
 {
     CellPair p(Trinity::ComputeCellPair(GetPositionX(), GetPositionY()));
     Cell cell(p);
@@ -10465,7 +10434,7 @@ Unit* Unit::SelectNearbyTarget() const
     std::list<Unit *> targets;
 
     {
-        Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, this, ATTACK_DISTANCE);
+        Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, this, dist);
         Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(targets, u_check);
 
         TypeContainerVisitor<Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck>, WorldTypeMapContainer > world_unit_searcher(searcher);

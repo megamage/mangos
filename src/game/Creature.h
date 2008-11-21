@@ -426,6 +426,8 @@ class TRINITY_DLL_SPEC Creature : public Unit
         bool canWalk() const { return GetCreatureInfo()->InhabitType & INHABIT_GROUND; }
         bool canSwim() const { return GetCreatureInfo()->InhabitType & INHABIT_WATER; }
         bool canFly()  const { return GetCreatureInfo()->InhabitType & INHABIT_AIR; }
+        bool isAggressive() const { return m_isAggressive; }
+        void SetAggressive(bool agg) { m_isAggressive = agg; }
         ///// TODO RENAME THIS!!!!!
         bool isCanTrainingOf(Player* player, bool msg) const;
         bool isCanIneractWithBattleMaster(Player* player, bool msg) const;
@@ -557,6 +559,7 @@ class TRINITY_DLL_SPEC Creature : public Unit
         bool IsWithinSightDist(Unit const* u) const;
         float GetAttackDistance(Unit const* pl) const;
 
+        Unit* SelectNearestTarget(float dist = 0) const;
         void CallAssistence();
         void SetNoCallAssistence(bool val) { m_AlreadyCallAssistence = val; }
         void DoFleeToGetAssistance(float radius = 50);
@@ -636,6 +639,7 @@ class TRINITY_DLL_SPEC Creature : public Unit
         uint8 m_emoteState;
         bool m_isPet;                                       // set only in Pet::Pet
         bool m_isTotem;                                     // set only in Totem::Totem
+        bool m_isAggressive;
         void RegenerateMana();
         void RegenerateHealth();
         uint32 m_regenTimer;
