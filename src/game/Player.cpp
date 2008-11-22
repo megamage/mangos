@@ -1016,6 +1016,13 @@ void Player::Update( uint32 p_time )
 
     CheckExploreSystem();
 
+    /*if(isCharmed())
+    {
+        if(Unit *charmer = GetCharmer())
+            if(charmer->GetTypeId() == TYPEID_UNIT && ((Creature*)charmer)->AI())
+                ((Creature*)charmer)->AI()->UpdateCharmedAI(this, p_time);
+    }*/
+
     // Update items that have just a limited lifetime
     if (now>m_Last_tick)
         UpdateItemDuration(uint32(now- m_Last_tick));

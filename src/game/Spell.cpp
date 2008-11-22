@@ -48,6 +48,7 @@
 #include "VMapFactory.h"
 #include "BattleGround.h"
 #include "Util.h"
+#include "TemporarySummon.h"
 
 #define SPELL_CHANNEL_UPDATE_INTERVAL 1000
 
@@ -1279,7 +1280,7 @@ void Spell::SearchAreaTarget(std::list<Unit*> &TagUnitMap, float radius, const u
 
     Trinity::SpellNotifierCreatureAndPlayer notifier(*this, TagUnitMap, radius, type, TargetType, entry);
     
-    if(TargetType != SPELL_TARGETS_ENTRY)
+    //if(TargetType != SPELL_TARGETS_ENTRY)
     {
         TypeContainerVisitor<Trinity::SpellNotifierCreatureAndPlayer, WorldTypeMapContainer > world_object_notifier(notifier);
         cell_lock->Visit(cell_lock, world_object_notifier, *MapManager::Instance().GetMap(m_caster->GetMapId(), m_caster));
@@ -1307,7 +1308,9 @@ Unit* Spell::SearchNearbyTarget(float radius, SpellTargets TargetType, uint32 en
             Creature* target = NULL;
             Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*m_caster, entry, true, radius);
             Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(target, u_check);
+            TypeContainerVisitor<Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck>, WorldTypeMapContainer >  world_unit_searcher(searcher);
             TypeContainerVisitor<Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck>, GridTypeMapContainer >  grid_unit_searcher(searcher);
+            cell_lock->Visit(cell_lock, world_unit_searcher, *MapManager::Instance().GetMap(m_caster->GetMapId(), m_caster));
             cell_lock->Visit(cell_lock, grid_unit_searcher, *MapManager::Instance().GetMap(m_caster->GetMapId(), m_caster));
             return target;
         }break;
@@ -1601,9 +1604,11 @@ void Spell::SetTargetMap(uint32 i,uint32 cur,std::list<Unit*> &TagUnitMap)
                         Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*m_caster,i_spellST->second.targetEntry,i_spellST->second.type!=SPELL_TARGET_TYPE_DEAD,range);
                         Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(p_Creature, u_check);
 
+                        TypeContainerVisitor<Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck>, WorldTypeMapContainer >  world_creature_searcher(searcher);
                         TypeContainerVisitor<Trinity::CreatureLastSearcher<Trinity::NearestCreatureEntryWithLiveStateInObjectRangeCheck>, GridTypeMapContainer >  grid_creature_searcher(searcher);
 
                         CellLock<GridReadGuard> cell_lock(cell, p);
+                        cell_lock->Visit(cell_lock, world_creature_searcher, *MapManager::Instance().GetMap(m_caster->GetMapId(), m_caster));
                         cell_lock->Visit(cell_lock, grid_creature_searcher, *MapManager::Instance().GetMap(m_caster->GetMapId(), m_caster));
 
                         if(p_Creature )
@@ -2185,6 +2190,20 @@ void Spell::cancel()
         default:
         {
         } break;
+    }
+
+    // Unsummon summon as possessed creatures on spell cancel
+    for (int i = 0; i < 3; i++)
+    {
+        if (m_spellInfo->Effect[i] == SPELL_EFFECT_SUMMON && 
+            (m_spellInfo->EffectMiscValueB[i] == SUMMON_TYPE_POSESSED || 
+             m_spellInfo->EffectMiscValueB[i] == SUMMON_TYPE_POSESSED2 || 
+             m_spellInfo->EffectMiscValueB[i] == SUMMON_TYPE_POSESSED3))
+        {
+            // Possession is removed in the UnSummon function
+            if (m_caster->GetCharm())
+                ((TemporarySummon*)m_caster->GetCharm())->UnSummon(); 
+        }
     }
 
     finish(false);
