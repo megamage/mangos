@@ -147,7 +147,11 @@ Creature::~Creature()
     delete i_AI;
     i_AI = NULL;
 
-    DeletePossessedAI();
+    if (i_AI_possessed)
+    {
+        delete i_AI_possessed;
+        i_AI_possessed = NULL;
+    }
 }
 
 void Creature::AddToWorld()
@@ -562,12 +566,9 @@ void Creature::InitPossessedAI()
     i_AI->OnPossess(true);
 }
 
-void Creature::DeletePossessedAI()
+void Creature::DisablePossessedAI()
 {
     if (!i_AI_possessed) return;
-
-    delete i_AI_possessed;
-    i_AI_possessed = NULL;
 
     // Signal the old AI that it's been re-enabled
     i_AI->OnPossess(false);
@@ -577,6 +578,7 @@ bool Creature::Create (uint32 guidlow, Map *map, uint32 Entry, uint32 team, cons
 {
     SetMapId(map->GetId());
     SetInstanceId(map->GetInstanceId());
+    m_DBTableGuid = guidlow;
 
     //oX = x;     oY = y;    dX = x;    dY = y;    m_moveTime = 0;    m_startMove = 0;
     const bool bResult = CreateFromProto(guidlow, Entry, team, data);
@@ -603,7 +605,6 @@ bool Creature::Create (uint32 guidlow, Map *map, uint32 Entry, uint32 team, cons
         }
         LoadCreaturesAddon();
     }
-
     return bResult;
 }
 

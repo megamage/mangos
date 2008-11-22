@@ -2886,7 +2886,7 @@ void Spell::EffectOpenLock(uint32 /*i*/)
             if(BattleGround *bg = player->GetBattleGround())
             {
                 // check if it's correct bg
-                if(bg && bg->GetTypeID() == BATTLEGROUND_AB)
+                if(bg->GetTypeID() == BATTLEGROUND_AB || bg->GetTypeID() == BATTLEGROUND_AV)
                     bg->EventPlayerClickedOnFlag(player, gameObjTarget);
                 return;
             }
@@ -3150,6 +3150,7 @@ void Spell::EffectSummonType(uint32 i)
             break;
         case SUMMON_TYPE_POSESSED:
         case SUMMON_TYPE_POSESSED2:
+        case SUMMON_TYPE_POSESSED3:
             EffectSummonPossessed(i);
             break;
         case SUMMON_TYPE_WILD:
@@ -3174,7 +3175,6 @@ void Spell::EffectSummonType(uint32 i)
             EffectSummonTotem(i);
             break;
         case SUMMON_TYPE_UNKNOWN1:
-        case SUMMON_TYPE_UNKNOWN2:
         case SUMMON_TYPE_UNKNOWN3:
         case SUMMON_TYPE_UNKNOWN4:
         case SUMMON_TYPE_UNKNOWN5:
