@@ -1871,6 +1871,7 @@ void Spell::EffectTriggerSpell(uint32 i)
         // Cloak of Shadows
         case 35729 :
         {
+            m_caster->RemoveAurasWithDispelType(DISPEL_ALL);
             Unit::AuraMap& Auras = m_caster->GetAuras();
             for(Unit::AuraMap::iterator iter = Auras.begin(); iter != Auras.end(); ++iter)
             {
@@ -2187,7 +2188,7 @@ void Spell::EffectApplyAura(uint32 i)
 
     // Prayer of Mending (jump animation), we need formal caster instead original for correct animation
     if( m_spellInfo->SpellFamilyName == SPELLFAMILY_PRIEST && (m_spellInfo->SpellFamilyFlags & 0x00002000000000LL))
-        m_caster->CastSpell(unitTarget,41637,true,NULL,Aur);
+        m_caster->CastSpell(unitTarget,41637,true,NULL,Aur,m_originalCasterGUID);
 }
 
 void Spell::EffectUnlearnSpecialization( uint32 i )
