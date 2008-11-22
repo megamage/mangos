@@ -78,3 +78,6 @@ win/VC90/*
 *.pdb
 src/bindings/scripts/VC90/*
 *.rej
+*.bat
+*.exe
+*.patch
