@@ -141,16 +141,23 @@ void ScriptedAI::UpdateAI(const uint32 diff)
 
 void ScriptedAI::EnterEvadeMode()
 {
-    m_creature->InterruptNonMeleeSpells(true);
+    //m_creature->InterruptNonMeleeSpells(true);
     m_creature->RemoveAllAuras();
     m_creature->DeleteThreatList();
     m_creature->CombatStop();
     m_creature->LoadCreaturesAddon();
-
-    if (m_creature->isAlive())
-        m_creature->GetMotionMaster()->MoveTargetedHome();
-
     m_creature->SetLootRecipient(NULL);
+
+    if(m_creature->isAlive())
+    {
+        if(Unit* owner = m_creature->GetOwner())
+        {
+            if(owner->isAlive())
+                m_creature->GetMotionMaster()->MoveFollow(owner,PET_FOLLOW_DIST,PET_FOLLOW_ANGLE);
+        } 
+        else
+            m_creature->GetMotionMaster()->MoveTargetedHome();
+    }
 
     InCombat = false;
     Reset();
@@ -671,9 +678,15 @@ void ScriptedAI::DoZoneInCombat(Unit* pUnit)
 
     Map::PlayerList const &PlayerList = map->GetPlayers();
     for(Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+    {
         if (Player* i_pl = i->getSource())
             if (!i_pl->isAlive())
+            {
+                pUnit->SetInCombatWith(i_pl);
+                i_pl->SetInCombatWith(pUnit);
                 pUnit->AddThreat(i_pl, 0.0f);
+            }
+    }
 }
 
 void ScriptedAI::DoResetThreat()

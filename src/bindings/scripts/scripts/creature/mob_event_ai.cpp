@@ -1033,18 +1033,9 @@ struct TRINITY_DLL_DECL Mob_EventAI : public ScriptedAI
 
     void EnterEvadeMode()
     {
-        m_creature->RemoveAllAuras();
-        m_creature->DeleteThreatList();
-        m_creature->CombatStop();
-        m_creature->LoadCreaturesAddon();
-        if( m_creature->isAlive() )
-            m_creature->GetMotionMaster()->MoveTargetedHome();
+        ScriptedAI::EnterEvadeMode();
 
-        m_creature->SetLootRecipient(NULL);
-
-        InCombat = false;
         IsFleeing = false;
-        Reset();
 
         //Handle Evade events
         for (std::list<EventHolder>::iterator i = EventList.begin(); i != EventList.end(); ++i)
