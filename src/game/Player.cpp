@@ -1048,10 +1048,9 @@ void Player::Update( uint32 p_time )
         }
     }
 
-    if (hasUnitState(UNIT_STAT_MELEE_ATTACKING))
+    if (hasUnitState(UNIT_STAT_MELEE_ATTACKING) && !hasUnitState(UNIT_STAT_CASTING))
     {
-        Unit *pVictim = getVictim();
-        if( !IsNonMeleeSpellCasted(false) && pVictim)
+        if(Unit *pVictim = getVictim())
         {
             // default combat reach 10
             // TODO add weapon,skill check
@@ -17412,17 +17411,18 @@ bool Player::canSeeOrDetect(Unit const* u, bool detect, bool inVisibleList) cons
             return false;
     }
 
-    // GMs see any players, not higher GMs and all units
-    if(isGameMaster())
-    {
-        if(u->GetTypeId() == TYPEID_PLAYER)
-            return ((Player *)u)->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
-        else
-            return true;
-    }
-
     if(u->GetVisibility() == VISIBILITY_OFF)
+    {
+        // GMs see any players, not higher GMs and all units
+        if(isGameMaster())
+        {
+            if(u->GetTypeId() == TYPEID_PLAYER)
+                return ((Player *)u)->GetSession()->GetSecurity() <= GetSession()->GetSecurity();
+            else
+                return true;
+        }
         return false;
+    }
 
     // player see other player with stealth/invisibility only if he in same group or raid or same team (raid/team case dependent from conf setting)
     if((m_invisibilityMask || u->m_invisibilityMask) && !canDetectInvisibilityOf(u))

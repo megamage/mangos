@@ -283,7 +283,8 @@ void Unit::Update( uint32 p_time )
         }
     }
 
-    if(!hasUnitState(UNIT_STAT_CASTING))
+    //not implemented before 3.0.2
+    //if(!hasUnitState(UNIT_STAT_CASTING))
     {
         if(uint32 base_att = getAttackTimer(BASE_ATTACK))
             setAttackTimer(BASE_ATTACK, (p_time >= base_att ? 0 : base_att - p_time) );
@@ -4154,6 +4155,7 @@ void Unit::RemoveAura(AuraMap::iterator &i, AuraRemoveMode mode)
     }
 
     sLog.outDebug("Aura %u now is remove mode %d",Aur->GetModifier()->m_auraname, mode);
+    assert(!Aur->IsInUse());
     Aur->ApplyModifier(false,true);
     Aur->_RemoveAura();
     delete Aur;
