@@ -477,7 +477,7 @@ void Unit::RemoveSpellsCausingAura(AuraType auraType)
     }
 }
 
-void Unit::RemoveAurasWithInterruptFlags(uint32 flag)
+void Unit::RemoveAurasWithInterruptFlags(uint32 flag, uint32 except)
 {
     if(!(m_interruptMask & flag))
         return;
@@ -492,17 +492,24 @@ void Unit::RemoveAurasWithInterruptFlags(uint32 flag)
         //sLog.outDetail("auraflag:%u flag:%u = %u",(*iter)->GetSpellProto()->AuraInterruptFlags,flag,(*iter)->GetSpellProto()->AuraInterruptFlags & flag);
         if(*iter && ((*iter)->GetSpellProto()->AuraInterruptFlags & flag))
         {
-            RemoveAurasDueToSpell((*iter)->GetId());
-            if (!m_interruptableAuras.empty())
-                next = m_interruptableAuras.begin();
-            else
-                break;
+            if((*iter)->IsInUse())
+                sLog.outError("Aura %u is trying to remove itself! Flag %u. May cause crash!", (*iter)->GetId(), flag);
+            else if(!except || (*iter)->GetId() != except)
+            {
+                RemoveAurasDueToSpell((*iter)->GetId());
+                if (!m_interruptableAuras.empty())
+                    next = m_interruptableAuras.begin();
+                else
+                    break;
+            }
         }
     }
 
     // interrupt channeled spell
     if(Spell* spell = m_currentSpells[CURRENT_CHANNELED_SPELL])
-        if(spell->getState() == SPELL_STATE_CASTING && (spell->m_spellInfo->ChannelInterruptFlags & flag))
+        if(spell->getState() == SPELL_STATE_CASTING 
+            && (spell->m_spellInfo->ChannelInterruptFlags & flag)
+            && spell->m_spellInfo->Id != except)
             InterruptNonMeleeSpells(false);
 }
 
@@ -914,7 +921,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
 
         if (damagetype != NODAMAGE && damage)// && pVictim->GetTypeId() == TYPEID_PLAYER)
         {
-            pVictim->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_DAMAGE);
+            pVictim->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_DAMAGE, spellProto ? spellProto->Id : 0);
             pVictim->RemoveSpellbyDamageTaken(damage, spellProto ? spellProto->Id : 0);
 
             /*const SpellEntry *se = i->second->GetSpellProto();
@@ -9731,8 +9738,11 @@ void Unit::SetInCombatState(bool PvP)
     if(GetTypeId() == TYPEID_PLAYER && GetPetGUID())
     {
         if(Pet *pet = GetPet())
-            for(int i = 0; i < MAX_MOVE_TYPE; ++i)
-                pet->UpdateSpeed(UnitMoveType(i), true);
+        {
+            pet->UpdateSpeed(MOVE_RUN, true);
+            pet->UpdateSpeed(MOVE_SWIM, true);
+            pet->UpdateSpeed(MOVE_FLY, true);
+        }
     }
 }
 
