@@ -148,6 +148,7 @@ bool IsPassiveStackableSpell( uint32 spellId )
 
 Unit::Unit()
 : WorldObject(), i_motionMaster(this), m_ThreatManager(this), m_HostilRefManager(this)
+, m_IsInNotifyList(false), m_Notified(false)
 {
     m_objectType |= TYPEMASK_UNIT;
     m_objectTypeId = TYPEID_UNIT;
@@ -678,6 +679,8 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     {
         DEBUG_LOG("DealDamage: victim just died");
 
+        pVictim->SetHealth(0);
+
         // find player: owner of controlled `this` or `this` itself maybe
         Player *player = GetCharmerOrOwnerPlayerOrPlayerItself();
 
@@ -760,8 +763,8 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             // FORM_SPIRITOFREDEMPTION and related auras
             pVictim->CastSpell(pVictim,27827,true,NULL,spiritOfRedemtionTalentReady);
         }
-        else
-            pVictim->SetHealth(0);
+        //else
+        //    pVictim->SetHealth(0);
 
         // remember victim PvP death for corpse type and corpse reclaim delay
         // at original death (not at SpiritOfRedemtionTalent timeout)
@@ -12561,4 +12564,12 @@ void Unit::RemoveAurasAtChanneledTarget(SpellEntry const* spellInfo)
         else
             ++iter;
     }
+}
+
+/*-----------------------TRINITY-----------------------------*/
+
+void Unit::SetToNotify()
+{
+    if(Map *map = GetMap())
+        map->AddUnitToNotify(this);
 }
