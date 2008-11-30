@@ -7,6 +7,7 @@
 <<<<<<< HEAD:src/shared/revision_nr.h
 <<<<<<< HEAD:src/shared/revision_nr.h
 <<<<<<< HEAD:src/shared/revision_nr.h
+<<<<<<< HEAD:src/shared/revision_nr.h
  #define REVISION_NR "6834"
 =======
  #define REVISION_NR "6820"
@@ -28,5 +29,8 @@
 >>>>>>> upstream/master:src/shared/revision_nr.h
 =======
  #define REVISION_NR "6856"
+>>>>>>> upstream/master:src/shared/revision_nr.h
+=======
+ #define REVISION_NR "6867"
 >>>>>>> upstream/master:src/shared/revision_nr.h
 #endif // __REVISION_NR_H__
