@@ -512,6 +512,8 @@ void Unit::RemoveAurasWithInterruptFlags(uint32 flag, uint32 except)
             && (spell->m_spellInfo->ChannelInterruptFlags & flag)
             && spell->m_spellInfo->Id != except)
             InterruptNonMeleeSpells(false);
+
+    UpdateInterruptMask();
 }
 
 void Unit::UpdateInterruptMask()
@@ -2779,6 +2781,7 @@ void Unit::AttackerStateUpdate (Unit *pVictim, WeaponAttackType attType, bool ex
         return;
 
     CombatStart(pVictim);
+    RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ATTACK);
 
     uint32 hitInfo;
     if (attType == BASE_ATTACK)
@@ -3401,6 +3404,9 @@ SpellMissInfo Unit::SpellHitResult(Unit *pVictim, SpellEntry const *spell, bool 
     // Check for immune (use charges)
     if (pVictim->IsImmunedToDamage(GetSpellSchoolMask(spell),true))
         return SPELL_MISS_IMMUNE;
+
+    if(this == pVictim)
+        return SPELL_MISS_NONE;
 
     // Try victim reflect spell
     if (CanReflect)
@@ -9761,11 +9767,8 @@ void Unit::CombatStart(Unit* target)
         target->SetInCombatWith(this);
     }
 
-    if(Player* attackedPlayer = target->GetCharmerOrOwnerPlayerOrPlayerItself())
+    if(Player* attackedPlayer = GetCharmerOrOwnerPlayerOrPlayerItself())
         SetContestedPvP(attackedPlayer);
-
-    if(!isInCombat()) // remove this?
-        RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ATTACK);
 }
 
 void Unit::SetInCombatState(bool PvP)

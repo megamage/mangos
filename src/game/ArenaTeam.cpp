@@ -231,7 +231,7 @@ void ArenaTeam::LoadMembersFromDB(uint32 ArenaTeamId)
 {
     Field *fields;
 
-    QueryResult *result = CharacterDatabase.PQuery("SELECT guid,played_week,wons_week,played_season,wons_season,points_to_add FROM arena_team_member WHERE arenateamid = '%u'", ArenaTeamId);
+    QueryResult *result = CharacterDatabase.PQuery("SELECT guid,games_week,wins_week,games_season,wins_season,points_to_add FROM arena_team_member WHERE arenateamid = '%u'", ArenaTeamId);
     if(!result)
         return;
 
@@ -601,10 +601,10 @@ int32 ArenaTeam::WonAgainstChance(float chance)
     int32 mod = (int32)floor(32.0f * (1.0f - chance));
     // modify the team stats accordingly
     stats.rating += mod;
-    stats.games += 1;
-    stats.wins += 1;
-    stats.played += 1;
-    stats.wins2 += 1;
+    stats.games_week += 1;
+    stats.wins_week += 1;
+    stats.games_season += 1;
+    stats.wins_season += 1;
 /*  this should be done in .flusharenapoints; not a breaker though.
     uint32 higher_rank = 0;
     QueryResult *result = CharacterDatabase.PQuery("SELECT DISTINCT COUNT(arenateamid) FROM arena_team_stats WHERE rating > '%u' AND arenateamid <> '%u'",stats.rating, Id);
@@ -625,8 +625,8 @@ int32 ArenaTeam::LostAgainstChance(float chance)
     int32 mod = (int32)ceil(32.0f * (0.0f - chance));
     // modify the team stats accordingly
     stats.rating += mod;
-    stats.games += 1;
-    stats.played += 1;
+    stats.games_week += 1;
+    stats.games_season += 1;
 /*    uint32 higher_rank = 0;
     QueryResult *result = CharacterDatabase.PQuery("SELECT DISTINCT COUNT (arenateamid) FROM arena_team_stats WHERE rating > '%u' AND arenateamid <> '%u'",stats.rating, Id);
     if(result)
@@ -655,11 +655,11 @@ void ArenaTeam::MemberLost(Player * plr, uint32 againstrating)
                 personalrating = 0;
             plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (GetSlot()*6) + 5, personalrating);
             // update personal played stats
-            itr->played_week +=1;
-            itr->played_season +=1;
+            itr->games_week +=1;
+            itr->games_season +=1;
             // update the unit fields
-            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 2, itr->played_week);
-            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 3, itr->played_season);
+            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 2, itr->games_week);
+            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 3, itr->games_season);
             return;
         }
     }
@@ -681,13 +681,13 @@ void ArenaTeam::MemberWon(Player * plr, uint32 againstrating)
                 personalrating = 0;
             plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + (GetSlot()*6) + 5, personalrating);
             // update personal stats
-            itr->played_week +=1;
-            itr->played_season +=1;
-            itr->wons_season += 1;
-            itr->wons_week += 1;
+            itr->games_week +=1;
+            itr->games_season +=1;
+            itr->wins_season += 1;
+            itr->wins_week += 1;
             // update unit fields
-            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 2, itr->played_week);
-            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 3, itr->played_season);
+            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 2, itr->games_week);
+            plr->SetUInt32Value(PLAYER_FIELD_ARENA_TEAM_INFO_1_1 + 6 * GetSlot() + 3, itr->games_season);
             return;
         }
     }
@@ -698,14 +698,14 @@ void ArenaTeam::UpdateArenaPointsHelper()
     // called after a match has ended and the stats are already modified
     // helper function for arena point distribution (this way, when distributing, no actual calculation is required, just a few comparisons)
     // 10 played games per week is a minimum
-    if(stats.games < 10)
+    if(stats.games_week < 10)
         return;
     // to get points, a player has to participate in at least 30% of the matches
-    uint32 min_plays = (uint32)ceil(stats.games * 0.3);
+    uint32 min_plays = (uint32)ceil(stats.games_week * 0.3);
     for(MemberList::iterator itr = members.begin(); itr !=  members.end(); ++itr)
     {
         // the player participated in enough games, update his points
-        if(itr->played_week >= min_plays)
+        if(itr->games_week >= min_plays)
         {
             // do it separately for online and offline players
             // online players might have modified personal rating in MemberLost/MemberWon, that's not already saved to DB because of asynch queries
@@ -731,10 +731,10 @@ void ArenaTeam::SaveToDB()
 {
     // save team and member stats to db
     // called after a match has ended
-    CharacterDatabase.PExecute("UPDATE arena_team_stats SET rating = '%u',games = '%u',played = '%u',rank = '%u',wins = '%u',wins2 = '%u' WHERE arenateamid = '%u'", stats.rating, stats.games, stats.played, stats.rank, stats.wins, stats.wins2, GetId());
+    CharacterDatabase.PExecute("UPDATE arena_team_stats SET rating = '%u',games = '%u',played = '%u',rank = '%u',wins = '%u',wins2 = '%u' WHERE arenateamid = '%u'", stats.rating, stats.games_week, stats.games_season, stats.rank, stats.wins_week, stats.wins_season, GetId());
     for(MemberList::iterator itr = members.begin(); itr !=  members.end(); ++itr)
     {
-        CharacterDatabase.PExecute("UPDATE arena_team_member SET played_week = '%u', wons_week = '%u', played_season = '%u', wons_season = '%u' WHERE arenateamid = '%u' AND guid = '%u'", itr->played_week, itr->wons_week, itr->played_season, itr->wons_season, Id, itr->guid);
+        CharacterDatabase.PExecute("UPDATE arena_team_member SET games_week = '%u', wins_week = '%u', games_season = '%u', wins_season = '%u' WHERE arenateamid = '%u' AND guid = '%u'", itr->games_week, itr->wins_week, itr->games_season, itr->wins_season, Id, itr->guid);
     }
 }
 
