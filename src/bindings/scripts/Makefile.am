@@ -173,6 +173,7 @@ scripts/zone/coilfang_resevoir/steam_vault/instance_steam_vault.cpp \
 scripts/zone/coilfang_resevoir/underbog/boss_hungarfen.cpp \
 scripts/zone/darkshore/darkshore.cpp \
 scripts/zone/deadmines/deadmines.cpp \
+scripts/zone/deadmines/def_deadmines.h \
 scripts/zone/dun_morogh/dun_morogh.cpp \
 scripts/zone/dustwallow_marsh/dustwallow_marsh.cpp \
 scripts/zone/eastern_plaguelands/eastern_plaguelands.cpp \
@@ -195,6 +196,7 @@ scripts/zone/hellfire_citadel/magtheridons_lair/def_magtheridons_lair.h \
 scripts/zone/hellfire_citadel/magtheridons_lair/instance_magtheridons_lair.cpp \
 scripts/zone/hellfire_citadel/shattered_halls/boss_nethekurse.cpp \
 scripts/zone/hellfire_citadel/shattered_halls/boss_warbringer_omrogg.cpp \
+scripts/zone/hellfire_citadel/shattered_halls/boss_warchief_kargath_bladefist.cpp \
 scripts/zone/hellfire_citadel/shattered_halls/def_shattered_halls.h \
 scripts/zone/hellfire_citadel/shattered_halls/instance_shattered_halls.cpp \
 scripts/zone/hellfire_peninsula/boss_doomlord_kazzak.cpp \

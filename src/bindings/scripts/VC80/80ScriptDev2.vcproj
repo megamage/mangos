@@ -554,6 +554,10 @@
 						RelativePath="..\scripts\zone\deadmines\deadmines.cpp"
 						>
 					</File>
+					<File
+						RelativePath="..\scripts\zone\deadmines\def_deadmines.h"
+						>
+					</File>					
 				</Filter>
 				<Filter
 					Name="Deadwind Pass"
@@ -1619,6 +1623,10 @@
 						</File>
 						<File
 							RelativePath="..\scripts\zone\hellfire_citadel\shattered_halls\boss_warbringer_omrogg.cpp"
+							>
+						</File>
+						<File
+							RelativePath="..\scripts\zone\hellfire_citadel\shattered_halls\boss_warchief_kargath_bladefist.cpp"
 							>
 						</File>
 						<File
